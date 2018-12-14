@@ -29,80 +29,81 @@ module Data.CDAR.Approx (Approx(..)
                         ,approximatedBy
                         ,better
                         ,fromDyadic
-                        ,toApprox
-                        ,recipA
-                        ,divAInteger
-                        ,modA
-                        ,divModA
-                        ,toDoubleA
-                        ,precision
-                        ,significance
-                        ,boundErrorTerm
-                        ,limitSize
-                        ,checkPrecisionLeft
-                        ,limitAndBound
-                        ,unionA
-                        ,intersectionA
-                        ,consistentA
-                        ,poly
-                        ,pow
-                        ,powers
-                        ,sqrtHeronA
-                        ,sqrtA
-                        ,sqrtRecA
-                        ,findStartingValues
-                        ,sqrtD
-                        ,shiftD
-                        ,sqrA
-                        ,log2Factorials
-                        ,taylorA
-                        ,expA
-                        ,expBinarySplittingA
-                        ,expTaylorA
-                        ,expTaylorA'
-                        ,logA
-                        ,logInternal
-                        ,logBinarySplittingA
-                        ,logTaylorA
-                        ,sinTaylorA
-                        ,sinTaylorRed1A
-                        ,sinTaylorRed2A
-                        ,sinA
-                        ,cosA
-                        ,atanA
-                        ,sinBinarySplittingA
-                        ,cosBinarySplittingA
-                        ,atanBinarySplittingA
-                        ,atanTaylorA
-                        ,piRaw
-                        ,piA
-                        ,piMachinA
-                        ,piBorweinA
-                        ,piAgmA
-                        ,log2A
-                        ,lnSuperSizeUnknownPi
-                        ,logAgmA
-                        ,agmLn
-                        ,showCRN
-                        ,showCR
-                        ,ok
-                        ,require
-                        ,toDouble
-                        ,fromDouble
-                        ,fromDoubleAsExactValue
-                        ,polynomial
-                        ,taylorCR
-                        ,atanCR
-                        ,piCRMachin
-                        ,piMachinCR
-                        ,piBorweinCR
-                        ,piBinSplitCR
-                        ,ln2
-                        ,sinCRTaylor
-                        ,sinCR
-                        ,cosCR
-                        ,sqrtCR
-                        ,expCR) where
+                        -- ,toApprox
+                        -- ,recipA
+                        -- ,divAInteger
+                        -- ,modA
+                        -- ,divModA
+                        -- ,toDoubleA
+                        -- ,precision
+                        -- ,significance
+                        -- ,boundErrorTerm
+                        -- ,limitSize
+                        -- ,checkPrecisionLeft
+                        -- ,limitAndBound
+                        -- ,unionA
+                        -- ,intersectionA
+                        -- ,consistentA
+                        -- ,poly
+                        -- ,pow
+                        -- ,powers
+                        -- ,sqrtHeronA
+                        -- ,sqrtA
+                        -- ,sqrtRecA
+                        -- ,findStartingValues
+                        -- ,sqrtD
+                        -- ,shiftD
+                        -- ,sqrA
+                        -- ,log2Factorials
+                        -- ,taylorA
+                        -- ,expAunsafeShiftL
+                        -- ,expBinarySplittingA
+                        -- ,expTaylorA
+                        -- ,expTaylorA'
+                        -- ,logA
+                        -- ,logInternal
+                        -- ,logBinarySplittingA
+                        -- ,logTaylorA
+                        -- ,sinTaylorA
+                        -- ,sinTaylorRed1A
+                        -- ,sinTaylorRed2A
+                        -- ,sinA
+                        -- ,cosA
+                        -- ,atanA
+                        -- ,sinBinarySplittingA
+                        -- ,cosBinarySplittingA
+                        -- ,atanBinarySplittingA
+                        -- ,atanTaylorA
+                        -- ,piRaw
+                        -- ,piA
+                        -- ,piMachinA
+                        -- ,piBorweinA
+                        -- ,piAgmA
+                        -- ,log2A
+                        -- ,lnSuperSizeUnknownPi
+                        -- ,logAgmA
+                        -- ,agmLn
+                        -- ,showCRN
+                        -- ,showCR
+                        -- ,ok
+                        -- ,require
+                        -- ,toDouble
+                        -- ,fromDouble
+                        -- ,fromDoubleAsExactValue
+                        -- ,polynomial
+                        -- ,taylorCR
+                        -- ,atanCR
+                        -- ,piCRMachin
+                        -- ,piMachinCR
+                        -- ,piBorweinCR
+                        -- ,piBinSplitCR
+                        -- ,ln2
+                        -- ,sinCRTaylor
+                        -- ,sinCR
+                        -- ,cosCR
+                        -- ,sqrtCR
+                        -- ,expCR
+                        ) where
 
 import           Control.Applicative (ZipList (..))
 import           Control.DeepSeq
@@ -130,24 +131,25 @@ There are two constructors for approximations:
   number is /approximated/ by the approximation is it belongs to the interval.
 - 'Bottom' is the trivial approximation that approximates all real numbers.
 
-The three fields of an @Approx m e s@ should be thought of as:
+The four fields of an @Approx m e s@ should be thought of as:
 
+[@b@] the bit-size, ie a limit on the bit-size of the midpoint
 [@m@] the midpoint
 [@e@] the error term
 [@s@] the exponent
 
-Thus, a value @Approx m e s@ is to be interpreted as the interval
-[(m-e)*2^s, (m+e)*2^s].
+Thus, a value @Approx p m e s@ is to be interpreted as the interval
+[(m-e)*2^s, (m+e)*2^s] where |m| <= 2^p.
 
 == Centred intervals
 We have opted for a centred representation of the intervals. It is also
 possible to represent the endpoints as 'Dyadic' numbers. The rationale for a
-centred repersentation is that we often normalise an approximation @Approx m e
-s@ so that @e@ is limited in size. This allows many operation to only work on
+centred repersentation is that we often normalise an approximation @Approx p m e
+s@ so that @e@ is limited in size. This allows many operations to only work on
 one large number @m@.
 
 == Potential for overflow
-Since the third field (the exponent) is only an 'Int' it may overflow. This is
+Since the last field (the exponent) is only an 'Int' it may overflow. This is
 an optimisation that was adopted since it seems unlikely that overflow in a 64
 bit Int exponent would occur. In a 32 bit system, this is potentially an
 issue.
@@ -180,17 +182,31 @@ Note, that we cannot ensure that converging sequences are mapped to converging
 sequences because of properties of computable real arithmetic. In particular,
 at any discuntinuity, it is impossible to compute a converging sequence.
 -}
-data Approx = Approx Integer Integer Int
+data Approx = Approx Int Integer Integer Int
             | Bottom
               deriving (Read,Show)
 
+enforceBitSize :: Approx -> Approx
+enforceBitSize Bottom = Bottom
+enforceBitSize a@(Approx b m e s) 
+    | m == 0 = a
+    | m_size <= b = a
+    | otherwise = Approx b m' e'' (s + d)
+    where
+    m_size = integerLog2 (abs m)
+    d = m_size - b
+    m' = shift m (-d) -- we have: shift m' d <= m
+    e' = 1 + (shift (e-1) (-d)) -- we have: 0 <= e <= shift e' d
+    e'' | m == shift m' d  = e' -- no loss of information
+       | otherwise = 1 + e'
+
 instance NFData Approx where
     rnf Bottom = ()
-    rnf (Approx m e s) = rnf m `seq` rnf e `seq` rnf s
+    rnf (Approx b m e s) = rnf b `seq` rnf m `seq` rnf e `seq` rnf s
 
 instance Scalable Approx where
   scale Bottom _ = Bottom
-  scale (Approx m e s) n = Approx m e (s+n)
+  scale (Approx b m e s) n = Approx b m e (s+n)
 
 instance Scalable CR where
   scale (CR x) n = CR $ flip scale n <$> x
@@ -210,15 +226,15 @@ converges to the unique real number in the intersection of all intervals.
 Given the domain /D/ of approximations described in 'Approx', we have a
 representation (a retraction) ρ from the converging sequences in /D/ to ℝ.
 Some operations on computable reals are partial, notably equality and
-ordering. A consequence of this is that there is no guarantee that a
-computable real will converge.
-
-For the /n/-th element in the sequence there is a bound on how much effort is
-put into the computation of the approximation. For involved computations it is
-possible that several of the leading approximations are trivial, i.e.,
-'Bottom'. If the computation will eventually converge, it will generate proper
-approximation after a modest number of initial trivial approximations.
-
+rnf m `seq`  there is no guarantee that a
+rnf m `seq` 
+rnf m `seq` 
+rnf m `seq` there is a bound on how much effort is
+rnf m `seq` mation. For involved computations it is
+rnf m `seq` proximations are trivial, i.e.,
+rnf m `seq` ually converge, it will generate proper
+rnf m `seq` initial trivial approximations.
+rnf m `seq` 
 The amount of added effort in each iteration is rather substantial so the
 expected precision of approximations increase very quickly.
 
@@ -276,7 +292,7 @@ showA = showInBaseA 10
 -}
 showInBaseA :: Int -> Approx -> String
 showInBaseA _ Bottom = "⊥"
-showInBaseA base (Approx m e s)
+showInBaseA base (Approx _ m e s)
     | e == 0 && (even base || s >= 0)
                      = sign ++ showExactA base b i f
     | am < e         = "±" ++ showNearZeroA base b i' f'
@@ -344,8 +360,8 @@ showInexactA base b i f e =
               else "." ++ frac ++ "~"
 
 -- |Construct a centred approximation from the end-points.
-endToApprox :: Extended Dyadic -> Extended Dyadic -> Approx
-endToApprox (Finite l) (Finite u)
+endToApprox :: Int -> Extended Dyadic -> Extended Dyadic -> Approx
+endToApprox b (Finite l) (Finite u)
   | u < l = Bottom -- Might be better with a signalling error.
   | otherwise =
     let a@(m:^s) = scale (l + u) (-1)
@@ -353,54 +369,54 @@ endToApprox (Finite l) (Finite u)
         r        = min s t
         m'       = unsafeShiftL m (s-r)
         n'       = unsafeShiftL n (t-r)
-    in (Approx m' n' r)
-endToApprox _ _ = Bottom
+    in (Approx b m' n' r)
+endToApprox _ _ _ = Bottom
 
 -- Interval operations
 -- |Gives the lower bound of an approximation as an 'Extended' 'Dyadic' number.
 lowerBound :: Approx -> Extended Dyadic
-lowerBound (Approx m e s) = Finite ((m-e):^s)
+lowerBound (Approx _ m e s) = Finite ((m-e):^s)
 lowerBound Bottom = NegInf
 
 -- |Gives the upper bound of an approximation as an 'Extended' 'Dyadic' number.
 upperBound :: Approx -> Extended Dyadic
-upperBound (Approx m e s) = Finite ((m+e):^s)
+upperBound (Approx _ m e s) = Finite ((m+e):^s)
 upperBound Bottom = PosInf
 
 -- |Gives the lower bound of an 'Approx' as an exact 'Approx'.
 lowerA :: Approx -> Approx
 lowerA Bottom = Bottom
-lowerA (Approx m e s) = Approx (m-e) 0 s
+lowerA (Approx b m e s) = Approx b (m-e) 0 s
 
 -- |Gives the upper bound of an 'Approx' as an exact 'Approx'.
 upperA :: Approx -> Approx
 upperA Bottom = Bottom
-upperA (Approx m e s) = Approx (m+e) 0 s
+upperA (Approx b m e s) = Approx b (m+e) 0 s
 
 -- |Gives the mid-point of an approximation as a 'Maybe' 'Dyadic' number.
 centre :: Approx -> Maybe Dyadic
-centre (Approx m _ s) = Just (m:^s)
+centre (Approx _ m _ s) = Just (m:^s)
 centre _ = Nothing
 
 -- |Gives the centre of an 'Approx' as an exact 'Approx'.
 centreA :: Approx -> Approx
 centreA Bottom = Bottom
-centreA (Approx m e s) = Approx m 0 s
+centreA (Approx b m e s) = Approx b m 0 s
 
 -- |Gives the radius of an approximation as a 'Dyadic' number. Currently a
 -- partial function. Should be made to return an 'Extended' 'Dyadic'.
 radius :: Approx -> Extended Dyadic
-radius (Approx _ e s) = Finite (e:^s)
+radius (Approx _ _ e s) = Finite (e:^s)
 radius _ = PosInf
 
 -- |Gives the lower bound of an approximation as an 'Extended' 'Dyadic' number.
 diameter :: Approx -> Extended Dyadic
-diameter (Approx _ e s) = Finite $ 2 * (e:^s)
+diameter (Approx _ _ e s) = Finite $ 2 * (e:^s)
 diameter _ = PosInf
 
 -- |Returns 'True' if the approximation is exact, i.e., it's diameter is 0.
 exact :: Approx -> Bool
-exact (Approx _ 0 _) = True
+exact (Approx _ _ 0 _) = True
 exact _ = False
 
 -- |Checks if a number is approximated by an approximation, i.e., if it
@@ -418,12 +434,12 @@ d `better` e = lowerBound d >= lowerBound e &&
                upperBound d <= upperBound e
 
 -- |Turns a 'Dyadic' number into an exact approximation.
-fromDyadic :: Dyadic -> Approx
-fromDyadic (m:^s) = Approx m 0 s
+fromDyadic :: Int -> Dyadic -> Approx
+fromDyadic b (m:^s) = Approx b m 0 s
 
 -- |Two approximations are equal if they encode the same interval.
 instance Eq Approx where
-    (Approx m e s) == (Approx n f t)
+    (Approx _ m e s) == (Approx _ n f t)
         | s >= t = let k = s-t
                    in unsafeShiftL m k == n && unsafeShiftL e k == f
         | s <  t = let k = t-s
@@ -434,54 +450,58 @@ instance Eq Approx where
 -- |Not a sensible instance. Just used to allow to allow enumerating integers
 -- using \'..\' notation.
 instance Enum Approx where
-    toEnum n = Approx (fromIntegral n) 0 0
-    fromEnum (Approx m _ s) = fromIntegral $ shift m s
+    toEnum n = Approx 64 (fromIntegral n) 0 0
+    fromEnum (Approx _ m _ s) = fromIntegral $ shift m s
     fromEnum Bottom = 0
 
 instance Num Approx where
-    (Approx m e s) + (Approx n f t)
+    (Approx b m e s) + (Approx c n f t)
         | s >= t = let k = s-t
-                   in Approx (unsafeShiftL m k + n) (unsafeShiftL e k + f) t
+                   in enforceBitSize $ Approx bc (unsafeShiftL m k + n) (unsafeShiftL e k + f) t
         | s <  t = let k = t-s
-                   in Approx (m + unsafeShiftL n k) (e + unsafeShiftL f k) s
+                   in enforceBitSize $ Approx bc (m + unsafeShiftL n k) (e + unsafeShiftL f k) s
+        where
+        bc = b `max` c
     _ + _ = Bottom
-    (Approx m e s) * (Approx n f t)
-        | am >= e && an >= f && a > 0           = Approx (a+d) (ab+ac) u
-        | am >= e && an >= f && a < 0           = Approx (a-d) (ab+ac) u
-        | am < e && n >= f                      = Approx (a+b) (ac+d) u
-        | am < e && -n >= f                     = Approx (a-b) (ac+d) u
-        | m >= e && an < f                      = Approx (a+c) (ab+d) u
-        | -m >= e && an < f                     = Approx (a-c) (ab+d) u
-        | a == 0                                = Approx (0) (ab+ac+d) u
-        | am < e && an < f && a > 0 && ab > ac  = Approx (a+ac) (ab+d) u
-        | am < e && an < f && a > 0 && ab <= ac = Approx (a+ab) (ac+d) u
-        | am < e && an < f && a < 0 && ab > ac  = Approx (a-ac) (ab+d) u
-        | am < e && an < f && a < 0 && ab <= ac = Approx (a-ab) (ac+d) u
-      where am = (abs m)
-            an = (abs n)
-            a = m*n
-            b = m*f
-            c = n*e
-            d = e*f
-            ab = (abs b)
-            ac = (abs c)
-            u = s+t
-    _ * _ = Bottom
-    negate (Approx m e s) = Approx (-m) e s
-    negate Bottom = Bottom
-    abs (Approx m e s)
-        | m' < e    = let e' = m'+e
-                      in Approx e' e' (s-1)
-        | otherwise = Approx m' e s
-      where m' = abs m
-    abs Bottom = Bottom
-    signum (Approx m e _)
-        | e == 0 = Approx (signum m) 0 0
-        | abs m < e = Approx 0 1 0
-        | abs m == e = Approx (signum m) 1 (-1)
-        | otherwise = Approx (signum m) 0 0
-    signum Bottom = Approx 0 1 0
-    fromInteger i = Approx i 0 0
+    -- (Approx m e s) * (Approx n f t)
+    --     | am >= e && an >= f && a > 0           = Approx (a+d) (ab+ac) u
+    --     | am >= e && an >= f && a < 0           = Approx (a-d) (ab+ac) u
+    --     | am < e && n >= f                      = Approx (a+b) (ac+d) u
+    --     | am < e && -n >= f                     = Approx (a-b) (ac+d) u
+    --     | m >= e && an < f                      = Approx (a+c) (ab+d) u
+    --     | -m >= e && an < f                     = Approx (a-c) (ab+d) u
+    --     | a == 0                                = Approx (0) (ab+ac+d) u
+    --     | am < e && an < f && a > 0 && ab > ac  = Approx (a+ac) (ab+d) u
+    --     | am < e && an < f && a > 0 && ab <= ac = Approx (a+ab) (ac+d) u
+    --     | am < e && an < f && a < 0 && ab > ac  = Approx (a-ac) (ab+d) u
+    --     | am < e && an < f && a < 0 && ab <= ac = Approx (a-ab) (ac+d) u
+    --   where am = (abs m)
+    --         an = (abs n)
+    --         a = m*n
+    --         b = m*f
+    --         c = n*e
+    --         d = e*f
+    --         ab = (abs b)
+    --         ac = (abs c)
+    --         u = s+t
+    -- _ * _ = Bottom
+    -- negate (Approx m e s) = Approx (-m) e s
+    -- negate Bottom = Bottom
+    -- abs (Approx m e s)
+    --     | m' < e    = let e' = m'+e
+    --                   in Approx e' e' (s-1)
+    --     | otherwise = Approx m' e s
+    --   where m' = abs m
+    -- abs Bottom = Bottom
+    -- signum (Approx m e _)
+    --     | e == 0 = Approx (signum m) 0 0
+    --     | abs m < e = Approx 0 1 0
+    --     | abs m == e = Approx (signum m) 1 (-1)
+    --     | otherwise = Approx (signum m) 0 0
+    -- signum Bottom = Approx 0 1 0
+    -- fromInteger i = Approx i 0 0
+
+{-
 
 -- |Convert a rational number into an approximation of that number with
 -- 'Precision' bits correct after the binary point.
@@ -1675,3 +1695,5 @@ instance Floating CR where
   asinh x = log (x + sqrt (x^2 + 1))
   acosh x = CR $ logA <$> resources <*> unCR (x + sqrt (x^2 - 1))
   atanh x = (CR $ logA <$> resources <*> unCR ((1+x) / (1-x))) / 2
+
+-}
