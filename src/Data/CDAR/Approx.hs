@@ -16,6 +16,7 @@ module Data.CDAR.Approx (Approx(..)
                         ,Precision
                         ,showA
                         ,showInBaseA
+                        ,mBound
                         ,endToApprox
                         ,lowerBound
                         ,upperBound
@@ -29,80 +30,80 @@ module Data.CDAR.Approx (Approx(..)
                         ,approximatedBy
                         ,better
                         ,fromDyadic
-                        -- ,toApprox
-                        -- ,recipA
-                        -- ,divAInteger
-                        -- ,modA
-                        -- ,divModA
-                        -- ,toDoubleA
-                        -- ,precision
-                        -- ,significance
-                        -- ,boundErrorTerm
-                        -- ,limitSize
-                        -- ,checkPrecisionLeft
-                        -- ,limitAndBound
-                        -- ,unionA
-                        -- ,intersectionA
-                        -- ,consistentA
-                        -- ,poly
-                        -- ,pow
-                        -- ,powers
-                        -- ,sqrtHeronA
-                        -- ,sqrtA
-                        -- ,sqrtRecA
-                        -- ,findStartingValues
-                        -- ,sqrtD
-                        -- ,shiftD
-                        -- ,sqrA
-                        -- ,log2Factorials
-                        -- ,taylorA
+                        ,toApprox
+                        ,recipA
+                        ,divAInteger
+                        ,modA
+                        ,divModA
+                        ,toDoubleA
+                        ,precision
+                        ,significance
+                        ,boundErrorTerm
+                        ,limitSize
+                        ,checkPrecisionLeft
+                        ,limitAndBound
+                        ,unionA
+                        ,intersectionA
+                        ,consistentA
+                        ,poly
+                        ,pow
+                        ,powers
+                        ,sqrtHeronA
+                        ,sqrtA
+                        ,sqrtRecA
+                        ,findStartingValues
+                        ,sqrtD
+                        ,shiftD
+                        ,sqrA
+                        ,log2Factorials
+                        ,taylorA
                         -- ,expAunsafeShiftL
-                        -- ,expBinarySplittingA
-                        -- ,expTaylorA
-                        -- ,expTaylorA'
-                        -- ,logA
-                        -- ,logInternal
-                        -- ,logBinarySplittingA
-                        -- ,logTaylorA
-                        -- ,sinTaylorA
-                        -- ,sinTaylorRed1A
-                        -- ,sinTaylorRed2A
-                        -- ,sinA
-                        -- ,cosA
-                        -- ,atanA
-                        -- ,sinBinarySplittingA
-                        -- ,cosBinarySplittingA
-                        -- ,atanBinarySplittingA
-                        -- ,atanTaylorA
-                        -- ,piRaw
-                        -- ,piA
-                        -- ,piMachinA
-                        -- ,piBorweinA
-                        -- ,piAgmA
-                        -- ,log2A
-                        -- ,lnSuperSizeUnknownPi
-                        -- ,logAgmA
-                        -- ,agmLn
-                        -- ,showCRN
-                        -- ,showCR
-                        -- ,ok
-                        -- ,require
-                        -- ,toDouble
-                        -- ,fromDouble
-                        -- ,fromDoubleAsExactValue
-                        -- ,polynomial
-                        -- ,taylorCR
-                        -- ,atanCR
-                        -- ,piCRMachin
-                        -- ,piMachinCR
-                        -- ,piBorweinCR
-                        -- ,piBinSplitCR
-                        -- ,ln2
-                        -- ,sinCRTaylor
-                        -- ,sinCR
-                        -- ,cosCR
-                        -- ,sqrtCR
-                        -- ,expCR
+                        ,expBinarySplittingA
+                        ,expTaylorA
+                        ,expTaylorA'
+                        ,logA
+                        ,logInternal
+                        ,logBinarySplittingA
+                        ,logTaylorA
+                        ,sinTaylorA
+                        ,sinTaylorRed1A
+                        ,sinTaylorRed2A
+                        ,sinA
+                        ,cosA
+                        ,atanA
+                        ,sinBinarySplittingA
+                        ,cosBinarySplittingA
+                        ,atanBinarySplittingA
+                        ,atanTaylorA
+                        ,piRaw
+                        ,piA
+                        ,piMachinA
+                        ,piBorweinA
+                        ,piAgmA
+                        ,log2A
+                        ,lnSuperSizeUnknownPi
+                        ,logAgmA
+                        ,agmLn
+                        ,showCRN
+                        ,showCR
+                        ,ok
+                        ,require
+                        ,toDouble
+                        ,fromDouble
+                        ,fromDoubleAsExactValue
+                        ,polynomial
+                        ,taylorCR
+                        ,atanCR
+                        ,piCRMachin
+                        ,piMachinCR
+                        ,piBorweinCR
+                        ,piBinSplitCR
+                        ,ln2
+                        ,sinCRTaylor
+                        ,sinCR
+                        ,cosCR
+                        ,sqrtCR
+                        ,expCR
                         ) where
 
 import           Control.Applicative (ZipList (..))
@@ -118,7 +119,7 @@ import           Data.Char (intToDigit)
 import           Data.List (findIndex, intersperse, transpose, unfoldr, zipWith4)
 import           Data.Ratio
 
-import Debug.Trace
+-- import Debug.Trace
 
 -- |A type synonym. Used to denote number of bits after binary point.
 type Precision = Int
@@ -133,7 +134,7 @@ There are two constructors for approximations:
 
 The four fields of an @Approx m e s@ should be thought of as:
 
-[@b@] the bit-size, ie a limit on the bit-size of the midpoint
+[@mb@] the midpoint bound, ie maximum bits available for the midpoint
 [@m@] the midpoint
 [@e@] the error term
 [@s@] the exponent
@@ -185,20 +186,6 @@ at any discuntinuity, it is impossible to compute a converging sequence.
 data Approx = Approx Int Integer Integer Int
             | Bottom
               deriving (Read,Show)
-
-enforceBitSize :: Approx -> Approx
-enforceBitSize Bottom = Bottom
-enforceBitSize a@(Approx b m e s) 
-    | m == 0 = a
-    | m_size <= b = a
-    | otherwise = Approx b m' e'' (s + d)
-    where
-    m_size = integerLog2 (abs m)
-    d = m_size - b
-    m' = shift m (-d) -- we have: shift m' d <= m
-    e' = 1 + (shift (e-1) (-d)) -- we have: 0 <= e <= shift e' d
-    e'' | m == shift m' d  = e' -- no loss of information
-       | otherwise = 1 + e'
 
 instance NFData Approx where
     rnf Bottom = ()
@@ -307,7 +294,7 @@ showInBaseA base (Approx _ m e s)
           sign = if m < 0 then "-" else ""
 
 showExactA :: Int -> Integer -> Integer -> Integer -> String
-showExactA base b i f = 
+showExactA base b i f =
     let g i' = let (q,r) = quotRem i' (fromIntegral base)
                in if i' == 0 then Nothing
                   else Just (intToDigit (fromIntegral r), q)
@@ -359,6 +346,49 @@ showInexactA base b i f e =
               then ""
               else "." ++ frac ++ "~"
 
+{-|
+    Give the "bound on midpoint bit-size" component of an 'Approx'.
+
+    The midpoint coponent should always be bounded by this as follows:
+    @ abs m <= 2^mb@.
+-}
+mBound :: Approx -> Int
+mBound (Approx mb _ _ _) = mb
+mBound Bottom = error "mBound Bottom"
+
+approxAutoMB :: Integer -> Integer -> Int -> Approx
+approxAutoMB m e s = Approx mb m e s
+    where
+    mb | abs m <= 1 = 1
+       | otherwise = 1 + integerLog2 (abs m - 1)
+
+mapMB :: (Int -> Int) -> Approx -> Approx
+mapMB f (Approx mb m e s) = Approx (f mb) m e s
+mapMB _f Bottom = Bottom
+
+approxMB :: Int -> Integer -> Integer -> Int -> Approx
+approxMB mb m e s = 
+    enforceMB $ Approx mb m e s
+
+approxMB2 :: Int -> Int -> Integer -> Integer -> Int -> Approx
+approxMB2 mb1 mb2 m e s = 
+    enforceMB $ Approx (mb1 `max` mb2) m e s
+
+enforceMB :: Approx -> Approx
+enforceMB Bottom = Bottom
+enforceMB a@(Approx b m e s)
+    | abs m <= 1 = a
+    | m_size <= b = a
+    | otherwise = Approx b m' e'' (s + d)
+    where
+    m_size = 1+integerLog2 (abs m - 1) -- |m| <= 2^m_size
+    d = m_size - b
+    m' = unsafeShiftR m d -- we have: m' * 2^d <= m
+    e' = 1 + (unsafeShiftR (e-1) d) -- we have: 0 <= e <= e' * 2^d
+    e''| m == unsafeShiftL m' d  = e' -- no loss of information
+       | otherwise = 1 + e'
+
+
 -- |Construct a centred approximation from the end-points.
 endToApprox :: Int -> Extended Dyadic -> Extended Dyadic -> Approx
 endToApprox b (Finite l) (Finite u)
@@ -401,7 +431,7 @@ centre _ = Nothing
 -- |Gives the centre of an 'Approx' as an exact 'Approx'.
 centreA :: Approx -> Approx
 centreA Bottom = Bottom
-centreA (Approx b m e s) = Approx b m 0 s
+centreA (Approx b m _e s) = Approx b m 0 s
 
 -- |Gives the radius of an approximation as a 'Dyadic' number. Currently a
 -- partial function. Should be made to return an 'Extended' 'Dyadic'.
@@ -435,7 +465,7 @@ d `better` e = lowerBound d >= lowerBound e &&
 
 -- |Turns a 'Dyadic' number into an exact approximation.
 fromDyadic :: Int -> Dyadic -> Approx
-fromDyadic b (m:^s) = Approx b m 0 s
+fromDyadic bs (m:^s) = approxMB bs m 0 s
 
 -- |Two approximations are equal if they encode the same interval.
 instance Eq Approx where
@@ -455,58 +485,60 @@ instance Enum Approx where
     fromEnum Bottom = 0
 
 instance Num Approx where
-    (Approx b m e s) + (Approx c n f t)
+    (Approx mb1 m e s) + (Approx mb2 n f t)
         | s >= t = let k = s-t
-                   in enforceBitSize $ Approx bc (unsafeShiftL m k + n) (unsafeShiftL e k + f) t
+                   in approxMB2 mb1 mb2 (unsafeShiftL m k + n) (unsafeShiftL e k + f) t
         | s <  t = let k = t-s
-                   in enforceBitSize $ Approx bc (m + unsafeShiftL n k) (e + unsafeShiftL f k) s
-        where
-        bc = b `max` c
+                   in approxMB2 mb1 mb2 (m + unsafeShiftL n k) (e + unsafeShiftL f k) s
     _ + _ = Bottom
-    -- (Approx m e s) * (Approx n f t)
-    --     | am >= e && an >= f && a > 0           = Approx (a+d) (ab+ac) u
-    --     | am >= e && an >= f && a < 0           = Approx (a-d) (ab+ac) u
-    --     | am < e && n >= f                      = Approx (a+b) (ac+d) u
-    --     | am < e && -n >= f                     = Approx (a-b) (ac+d) u
-    --     | m >= e && an < f                      = Approx (a+c) (ab+d) u
-    --     | -m >= e && an < f                     = Approx (a-c) (ab+d) u
-    --     | a == 0                                = Approx (0) (ab+ac+d) u
-    --     | am < e && an < f && a > 0 && ab > ac  = Approx (a+ac) (ab+d) u
-    --     | am < e && an < f && a > 0 && ab <= ac = Approx (a+ab) (ac+d) u
-    --     | am < e && an < f && a < 0 && ab > ac  = Approx (a-ac) (ab+d) u
-    --     | am < e && an < f && a < 0 && ab <= ac = Approx (a-ab) (ac+d) u
-    --   where am = (abs m)
-    --         an = (abs n)
-    --         a = m*n
-    --         b = m*f
-    --         c = n*e
-    --         d = e*f
-    --         ab = (abs b)
-    --         ac = (abs c)
-    --         u = s+t
-    -- _ * _ = Bottom
-    -- negate (Approx m e s) = Approx (-m) e s
-    -- negate Bottom = Bottom
-    -- abs (Approx m e s)
-    --     | m' < e    = let e' = m'+e
-    --                   in Approx e' e' (s-1)
-    --     | otherwise = Approx m' e s
-    --   where m' = abs m
-    -- abs Bottom = Bottom
-    -- signum (Approx m e _)
-    --     | e == 0 = Approx (signum m) 0 0
-    --     | abs m < e = Approx 0 1 0
-    --     | abs m == e = Approx (signum m) 1 (-1)
-    --     | otherwise = Approx (signum m) 0 0
-    -- signum Bottom = Approx 0 1 0
-    -- fromInteger i = Approx i 0 0
-
-{-
+    (Approx mb1 m e s) * (Approx mb2 n f t)
+        | am >= e && an >= f && a > 0           = approxMB2 mb1 mb2 (a+d) (ab+ac) u
+        | am >= e && an >= f && a < 0           = approxMB2 mb1 mb2 (a-d) (ab+ac) u
+        | am < e && n >= f                      = approxMB2 mb1 mb2 (a+b) (ac+d) u
+        | am < e && -n >= f                     = approxMB2 mb1 mb2 (a-b) (ac+d) u
+        | m >= e && an < f                      = approxMB2 mb1 mb2 (a+c) (ab+d) u
+        | -m >= e && an < f                     = approxMB2 mb1 mb2 (a-c) (ab+d) u
+        | a == 0                                = approxMB2 mb1 mb2 (0) (ab+ac+d) u
+        | am < e && an < f && a > 0 && ab > ac  = approxMB2 mb1 mb2 (a+ac) (ab+d) u
+        | am < e && an < f && a > 0 && ab <= ac = approxMB2 mb1 mb2 (a+ab) (ac+d) u
+        | am < e && an < f && a < 0 && ab > ac  = approxMB2 mb1 mb2 (a-ac) (ab+d) u
+        | am < e && an < f && a < 0 && ab <= ac = approxMB2 mb1 mb2 (a-ab) (ac+d) u
+      where am = (abs m)
+            an = (abs n)
+            a = m*n
+            b = m*f
+            c = n*e
+            d = e*f
+            ab = (abs b)
+            ac = (abs c)
+            u = s+t
+    _ * _ = Bottom
+    negate (Approx mb m e s) = Approx mb (-m) e s
+    negate Bottom = Bottom
+    abs (Approx mb m e s)
+        | m' < e    = let e' = m'+e
+                      in Approx mb e' e' (s-1)
+        | otherwise = Approx mb m' e s
+      where m' = abs m
+    abs Bottom = Bottom
+    signum (Approx _ m e _)
+        | e == 0 = Approx 64 (signum m) 0 0
+        | abs m < e = Approx 64 0 1 0
+        | abs m == e = Approx 64 (signum m) 1 (-1)
+        | otherwise = Approx 64 (signum m) 0 0
+    signum Bottom = Approx 64 0 1 0
+    fromInteger i = mapMB (\mb -> 64 + 10*mb) $ approxAutoMB i 0 0
 
 -- |Convert a rational number into an approximation of that number with
 -- 'Precision' bits correct after the binary point.
 toApprox :: Precision -> Rational -> Approx
-toApprox t r = Approx (2 * round (r*2^^t)) 1 (-t - 1)
+toApprox t r = approxAutoMB m e (-t - 1)
+    where
+    m = (2 * r_scaled_rounded)
+    r_scaled_rounded = round r_scaled
+    r_scaled = r*2^^t
+    e | r_scaled == fromIntegral r_scaled_rounded = 0
+      | otherwise = 1
 
 -- |Not a proper Fractional type as Approx are intervals.
 instance Fractional Approx where
@@ -519,16 +551,17 @@ instance Fractional Approx where
 -- the input will be computed.
 recipA :: Precision -> Approx -> Approx
 recipA _ Bottom = Bottom
-recipA t (Approx m e s)
-    | e == 0      = let s' = integerLog2 (abs m)
-                    in Approx
+recipA t (Approx mb m e s)
+    | e == 0 && m /= 0
+                  = let s' = integerLog2 (abs m)
+                    in Approx (mb `max` t+2)
                          (round (bit (s'+t+2) % m))
                          1
                          (-s-s'-t-2)
     | (abs m) > e = let d = m*m-e*e
                         d2 = unsafeShiftR d 1
                         s' = integerLog2 d + 2 * errorBits
-                    in boundErrorTerm $ Approx
+                    in boundErrorTerm $ approxMB mb
                            ((unsafeShiftL m s' + d2) `div` d)
                            ((unsafeShiftL e s' + d2+1) `div` d + 1)
                            (-s-s')
@@ -543,35 +576,36 @@ recipA t (Approx m e s)
 -- |Divide an approximation by an integer.
 divAInteger :: Approx -> Integer -> Approx
 divAInteger Bottom _ = Bottom
-divAInteger (Approx m e s) n =
+divAInteger (Approx mb m e s) n =
   let t = integerLog2 n
-  in Approx (round (unsafeShiftL m t % n))
+  in approxMB mb
+             (round (unsafeShiftL m t % n))
              (ceiling (unsafeShiftL e t % n))
              s
 
 -- |Compute the modulus of two approximations.
 modA :: Approx -> Approx -> Approx
-modA (Approx m e s) (Approx n f t) =
+modA (Approx mb1 m e s) (Approx mb2 n f t) =
     let r = min s t
         (d,m') = divMod (unsafeShiftL m (s-r)) (unsafeShiftL n (t-r))
         e' = scale e (s-r) + abs d * scale f (t-r)
-    in Approx m' e' r
+    in approxMB2 mb1 mb2 m' e' r
 modA _ _ = Bottom
 
 -- |Compute the integer quotient (although returned as an 'Approx' since it
 -- may be necessary to return 'Bottom' if the integer quotient can't be
 -- determined) and the modulus as an approximation of two approximations.
 divModA :: Approx -> Approx -> (Approx, Approx)
-divModA (Approx m e s) (Approx n f t) =
+divModA (Approx mb1 m e s) (Approx mb2 n f t) =
     let r = min s t
         (d,m') = divMod (unsafeShiftL m (s-r)) (unsafeShiftL n (t-r))
         e' = e + abs d * f
-    in (fromIntegral d, Approx m' e' r)
+    in (fromIntegral d, approxMB2 mb1 mb2 m' e' r)
 divModA _ _ = (Bottom, Bottom)
 
 -- |Not a proper Ord type as Approx are intervals.
 instance Ord Approx where
-    compare (Approx m e s) (Approx n f t)
+    compare (Approx _ m e s) (Approx _ n f t)
         | abs ((m:^s)-(n:^t)) > (e:^s)+(f:^t) = compare (m:^s) (n:^t)
         | otherwise                           = error "compare: comparisons are partial on Approx"
     compare _ _ = error "compare: comparisons are partial on Approx"
@@ -582,7 +616,7 @@ instance Ord Approx where
 -- Note that converting to a rational number will give only a single rational
 -- point. Do not expect to be able to recover the interval from this value.
 instance Real Approx where
-    toRational (Approx m e s) = approxRational
+    toRational (Approx _ m e s) = approxRational
                                   (toRational (m:^s))
                                   (toRational (e:^s))
     toRational _ = undefined
@@ -595,17 +629,17 @@ toDoubleA = fmap (fromRational . toRational) . centre
 -- |Computes the precision of an approximation. This is roughly the number of
 -- correct bits after the binary point.
 precision :: Approx -> Extended Precision
-precision (Approx _ 0 _) = PosInf
-precision (Approx _ e s) = Finite $ - s - (integerLog2 e) - 1
+precision (Approx _ _ 0 _) = PosInf
+precision (Approx _ _ e s) = Finite $ - s - (integerLog2 e) - 1
 precision Bottom         = NegInf
 
 -- |Computes the significance of an approximation. This is roughly the number
 -- of significant bits.
 significance :: Approx -> Extended Int
-significance (Approx _ 0 _) = PosInf
-significance (Approx 0 _ _) = NegInf
-significance (Approx m 1 _) =  Finite $ integerLog2 (abs m) - 1
-significance (Approx m e _) =
+significance (Approx _ _ 0 _) = PosInf
+significance (Approx _ 0 _ _) = NegInf
+significance (Approx _ m 1 _) =  Finite $ integerLog2 (abs m) - 1
+significance (Approx _ m e _) =
     Finite $ (integerLog2 (abs m)) - (integerLog2 (e-1)) - 1
 significance Bottom         = NegInf
 
@@ -614,7 +648,7 @@ This function bounds the error term of an 'Approx'.
 
 It is always the case that @x `'better'` boundErrorTerm x@.
 
-Consider an approximation @Approx m e s@. If @e@ has /k/ bits then that
+Consider an approximation @Approx mb m e s@. If @e@ has /k/ bits then that
 essentially expresses that the last /k/ bits of @m@ are unknown or garbage. By
 scaling both @m@ and @e@ so that @e@ has a small number of bits we save on
 memory space and computational effort to compute operations. On the other
@@ -633,17 +667,17 @@ This function will map a converging sequence to a converging sequence.
 -}
 boundErrorTerm :: Approx -> Approx
 boundErrorTerm Bottom = Bottom
-boundErrorTerm a@(Approx m e s)
+boundErrorTerm a@(Approx b m e s)
     | e < errorBound = a
     | otherwise =
         let k = integerLog2 e + 1 - errorBits
             t = testBit m (k-1)
             m' = unsafeShiftR m k
             -- may overflow and use errorBits+1
-            e' = unsafeShiftR (e + bit (k-1)) k + 1 
+            e' = unsafeShiftR (e + bit (k-1)) k + 1
         in if t
-           then Approx (m'+1) e' (s+k)
-           else Approx m'     e' (s+k)
+           then Approx b (m'+1) e' (s+k)
+           else Approx b m'     e' (s+k)
 
 {-|
 Limits the size of an approximation by restricting how much precision an
@@ -670,8 +704,8 @@ converging sequence.
 -}
 limitSize :: Precision -> Approx -> Approx
 limitSize _ Bottom = Bottom
-limitSize l a@(Approx m e s)
-    | k > 0     = Approx
+limitSize l a@(Approx mb m e s)
+    | k > 0     = Approx mb
                   ((if testBit m (k-1) then (+1) else id) (unsafeShiftR m k))
                   (1 + (unsafeShiftR (e + bit (k-1)) k))
                   (-l)
@@ -696,13 +730,17 @@ limitAndBound limit =
 unionA :: Approx -> Approx -> Approx
 unionA Bottom _ = Bottom
 unionA _ Bottom = Bottom
-unionA a b = endToApprox (lowerBound a `min` lowerBound b) (upperBound a `max` upperBound b)
+unionA a@(Approx mb1 _ _ _) b@(Approx mb2 _ _ _) =
+    endToApprox (mb1 `max` mb2) (lowerBound a `min` lowerBound b) (upperBound a `max` upperBound b)
 
 -- | Find the intersection of two approximations.
 intersectionA :: Approx -> Approx -> Approx
 intersectionA Bottom a = a
 intersectionA a Bottom = a
-intersectionA a b = if l <= u then endToApprox l u else error "Trying to take intersection of two non-overlapping Approx."
+intersectionA a@(Approx mb1 _ _ _) b@(Approx mb2 _ _ _) =
+  if l <= u
+    then endToApprox (mb1 `max` mb2) l u
+    else error "Trying to take intersection of two non-overlapping Approx."
   where l = (lowerBound a `max` lowerBound b)
         u = (upperBound a `min` upperBound b)
 
@@ -715,12 +753,14 @@ consistentA a b = (lowerBound a `max` lowerBound b) <= (upperBound a `min` upper
 -- |Given a list of polynom coefficients and a value this evaluates the
 -- polynomial at that value.
 --
+-- This works correctly only for exact coefficients.
+--
 -- Should give a tighter bound on the result since we reduce the dependency
 -- problem.
 poly :: [Approx] -> Approx -> Approx
 poly [] _ = 0
 poly _ Bottom = Bottom
-poly as x =
+poly as x@(Approx mb _ _ _) =
     let --poly' :: [Dyadic] -> Dyadic -> Dyadic
         poly' as' x' = sum . zipWith (*) as' $ pow x'
         ms = map ((maybe (error "Can't compute poly with Bottom coefficients") id) . centre) as
@@ -730,7 +770,7 @@ poly as x =
         (Finite b) = upperBound . abs $ poly' ds x
         (Finite (e':^_)) = fmap (b*) $ radius x
         -- exponent above will be same as s
-    in Approx m' e' s
+    in approxMB mb m' e' s
 
 -- |Gives a list of powers of a number, i.e., [1,x,x^2,...].
 pow :: (Num a) => a -> [a]
@@ -747,14 +787,14 @@ binomialCoefficients =
 -- far benchmarking seems to indicate that the cost is too high, but this may
 -- depend on the application.
 powers :: Approx -> [Approx]
-powers (Approx m e s) =
+powers (Approx mb m e s) =
     let ms = pow m
         es = pow e
         f = reverse . zipWith (*) ms . reverse . zipWith (*) es
         sumAlt [] = (0,0)
         sumAlt (x:[]) = (x,0)
         sumAlt (x:y:xs) = let (a,b) = sumAlt xs in (a+x,b+y)
-        g s' (m', e') = Approx m' e' s'
+        g s' (m', e') = approxMB mb m' e' s'
     in zipWith g (iterate (+s) 0) $ map (sumAlt . f) binomialCoefficients
 powers _ = repeat Bottom
 
@@ -765,19 +805,19 @@ many times faster for larger arguments.
 -}
 sqrtHeronA :: Precision -> Approx -> Approx
 sqrtHeronA _ Bottom = Bottom
-sqrtHeronA k a@(Approx m e s)
+sqrtHeronA k a@(Approx mb m e s)
     | -m > e    = error "Attempting sqrt of Approx containing only negative numbers."
     | m < e     = Bottom
     | e == 0    = let (n:^t) = shiftD (-k) $ sqrtD (-k-2) (m:^s)
-                  in Approx n 1 t
+                  in mapMB (max mb) $ approxAutoMB n 1 t
     | m == e    = let (n:^t) = sqrtD (s `quot` 2 -errorBits) ((m+e):^s)
                       n' = (n+2) `quot` 2
-                  in Approx n' n' t
+                  in approxMB mb n' n' t
     | otherwise = let (Finite p) = significance a
                       s' = s `quot` 2 - p - errorBits
                       l@(n:^t) = sqrtD s' ((m-e):^s)
                       (n':^t') = sqrtD' s' ((m+e):^s) l
-                  in endToApprox (Finite ((n-1):^t)) (Finite ((n'+1):^t'))
+                  in endToApprox mb (Finite ((n-1):^t)) (Finite ((n'+1):^t'))
 
 {-|
 Compute the square root of an approximation.
@@ -790,7 +830,7 @@ The resulting approximation should approximate the image of every point in the
 input approximation.
 -}
 sqrtA :: Precision -> Approx -> Approx
-sqrtA _ x@(Approx 0 0 _) =  x
+sqrtA _ x@(Approx _ 0 0 _) =  x
 sqrtA k x = limitAndBound k $ x * sqrtRecA k x
 
 {-|
@@ -798,14 +838,14 @@ This uses Newton's method for computing the reciprocal of the square root.
 -}
 sqrtRecA :: Precision -> Approx -> Approx
 sqrtRecA _ Bottom = Bottom
-sqrtRecA k a@(Approx m e s)
+sqrtRecA k a@(Approx mb m e s)
   | -m > e    = error "Attempting sqrtRec of Approx containing only negative numbers."
   | m < e     = Bottom
   | e == 0    = let (n:^t) = shiftD (-k) $ sqrtRecD (-k-2) (m:^s)
-                in Approx n 1 t
+                in mapMB (max mb) $ approxAutoMB n 1 t
   | m == e    = let (n:^t) = sqrtRecD (s `quot` 2 -errorBits) ((m+e):^s)
                     n' = (n+2) `quot` 2
-                in Approx n' n' t
+                in approxMB mb n' n' t
   | otherwise = let (Finite p) = significance a
                     s' = s `quot` 2 - p - errorBits
                     (n:^t) = sqrtRecD s' ((m-e):^s) -- upper bound of result
@@ -816,7 +856,7 @@ sqrtRecA k a@(Approx m e s)
                     -- that if we swap the order we would be fine. But as it
                     -- is, this computes a new first approximation.
                     (n':^t') = sqrtRecD s' ((m+e):^s) -- lower bound of result
-                in endToApprox (Finite ((n'+1):^t')) (Finite ((n-1):^t))
+                in endToApprox mb (Finite ((n'+1):^t')) (Finite ((n-1):^t))
 
 {-|
 The starting values for newton iterations can be found using the auxiliary function findStartingValues below.
@@ -854,9 +894,9 @@ findStartingValues f = map (fromRational . toRational . (/2)) . (\l -> zipWith (
 -- interval due to the dependency problem.
 sqrA :: Approx -> Approx
 sqrA Bottom = Bottom
-sqrA (Approx m e s)
-  | am > e = Approx (m^(2 :: Int) + e^(2 :: Int)) (2*abs m*e) (2*s)
-  | otherwise = let m' = (am + e)^(2 :: Int) in Approx m' m' (2*s-1)
+sqrA (Approx mb m e s)
+  | am > e = approxMB mb (m^(2 :: Int) + e^(2 :: Int)) (2*abs m*e) (2*s)
+  | otherwise = let m' = (am + e)^(2 :: Int) in approxMB mb m' m' (2*s-1)
   where am = abs m
 -- Binary splitting
 
@@ -920,8 +960,8 @@ taylor :: Precision -> [Approx] -> [Integer] -> Approx
 taylor res as qs =
   let res' = res + errorBits
       f a q = limitAndBound res' $ a * recipA res' (fromIntegral q)
-      bs = zipWith f as qs
-      (cs,(d:_)) = span nonZeroCentredA bs -- This span and the sum on the next line do probably not fuse!
+      mb = zipWith f as qs
+      (cs,(d:_)) = span nonZeroCentredA mb -- This span and the sum on the next line do probably not fuse!
   in fudge (sum cs) d
 
 -- | A list of factorial values.
@@ -944,7 +984,7 @@ evenFac = let f (x:_:xs) = x:f xs
 -- | Checks if the centre of an approximation is not 0.
 nonZeroCentredA :: Approx -> Bool
 nonZeroCentredA Bottom = False
-nonZeroCentredA (Approx 0 _ _) = False
+nonZeroCentredA (Approx _ 0 _ _) = False
 nonZeroCentredA _ = True
 
 -- This version is faster especially far smaller precision.
@@ -977,19 +1017,20 @@ expA = expTaylorA'
 -- | Exponential by binary splitting summation of Taylor series.
 expBinarySplittingA :: Precision -> Approx -> Approx
 expBinarySplittingA _ Bottom = Bottom
-expBinarySplittingA res a@(Approx m e s) =
+expBinarySplittingA res a@(Approx mb m e s) =
   let s' = s + integerLog2 m
       -- r' chosen so that a' below is smaller than 1/2
       r' = floor . sqrt . fromIntegral . max 5 $ res
       r = s' + r'
       -- a' is a scaled by 2^k so that 2^(-r') <= a' < 2^(-r'+1)
-      a' = Approx m e (s-r)
+      a' = Approx mb m e (s-r)
+      setMB = mapMB (const (mb+res))
       -- (Finite c) = min (significance a) (Finite res)
       (Just n) = findIndex (>= res+r) $ zipWith (+) log2Factorials [0,r'..]
       (p, q, b, t) = abpq ones
                           ones
-                          (1:repeat a')
-                          (1:[1..])
+                          (map setMB $ 1:repeat a')
+                          (map setMB $ 1:[1..])
                           0
                           n
       nextTerm = a * p * recipA (res+r) (fromIntegral n * q)
@@ -999,13 +1040,13 @@ expBinarySplittingA res a@(Approx m e s) =
 -- | Exponential by summation of Taylor series.
 expTaylorA :: Precision -> Approx -> Approx
 expTaylorA _ Bottom = Bottom
-expTaylorA res (Approx m e s) =
+expTaylorA res (Approx mb m e s) =
   let s' = s + integerLog2 m
       -- r' chosen so that a' below is smaller than 1/2
       r' = floor . sqrt . fromIntegral . max 5 $ res
       r = max 0 $ s' + r'
       -- a' is a scaled by 2^k so that 2^(-r') <= a' < 2^(-r'+1)
-      a' = (Approx m e (s-r))
+      a' = (Approx (mb + res) m e (s-r))
       t = taylor
             (res + r)
             (iterate (a'*) 1)
@@ -1015,13 +1056,13 @@ expTaylorA res (Approx m e s) =
 -- | Exponential by summation of Taylor series.
 expTaylorA' :: Precision -> Approx -> Approx
 expTaylorA' _ Bottom = Bottom
-expTaylorA' res (Approx m e s) =
+expTaylorA' res (Approx mb m e s) =
   let s' = s + integerLog2 m
       -- r' chosen so that a' below is smaller than 1/2
       r' = floor . sqrt . fromIntegral . max 5 $ res
       r = max 0 $ s' + r'
       -- a' is a scaled by 2^k so that 2^(-r') <= a' < 2^(-r'+1)
-      a' = (Approx m e (s-r))
+      a' = (Approx mb m e (s-r))
       t = taylorA
             (res + r)
             (map (recipA (res+r)) fac)
@@ -1046,7 +1087,7 @@ logA :: Precision -> Approx -> Approx
 -- computation. We could even make use of the fact that the derivative on the
 -- interval x is bounded by 1/x to get a tighter bound on the error.
 logA _ Bottom = Bottom
-logA p x@(Approx m e _)
+logA p x@(Approx _ m e _)
   | m > e = logInternal p x
 --    let (n :^ t) = logD (negate p) $ (m-e) :^ s
 --        (n' :^ t') = logD (negate p) $ (m+e) :^ s
@@ -1055,24 +1096,24 @@ logA p x@(Approx m e _)
 
 logInternal :: Int -> Approx -> Approx
 logInternal _ Bottom = error "LogInternal: impossible"
-logInternal p (Approx m e s) =
+logInternal p (Approx mb m e s) =
   let t' = (negate p) - 10 - max 0 (integerLog2 m + s) -- (5 + size of argument) guard digits
       r = s + integerLog2 (3*m) - 1
       x = scale (m :^ s) (-r) -- 2/3 <= x' <= 4/3
       y = divD' t' (x - 1) (x + 1) -- so |y| <= 1/5
       (n :^ s') = flip scale 1 $ atanhD t' y
       (e' :^ s'') = divD' t' (e:^(s-r)) x -- Estimate error term.
-      res = Approx n (scale (e' + 1) (s'' - s')) s'
+      res = approxMB mb n (scale (e' + 1) (s'' - s')) s'
   in boundErrorTerm $ res + fromIntegral r * log2A t'
 
 -- | Logarithm by binary splitting summation of Taylor series.
 logBinarySplittingA :: Precision -> Approx -> Approx
 logBinarySplittingA _ Bottom = Bottom
-logBinarySplittingA res a@(Approx m e s) =
+logBinarySplittingA res a@(Approx mb m e s) =
     if m <= e then Bottom -- only defined for strictly positive arguments
     else
         let r = s + integerLog2 (3*m) - 1
-            a' = Approx m e (s-r)  -- a' is a scaled by a power of 2 so that 2/3 <= |a'| <= 4/3
+            a' = Approx (mb+res) m e (s-r)  -- a' is a scaled by a power of 2 so that 2/3 <= |a'| <= 4/3
             u = a' - 1
             v = a' + 1
             u2 = sqrA u
@@ -1091,12 +1132,12 @@ logBinarySplittingA res a@(Approx m e s) =
 -- | Logarithm by summation of Taylor series.
 logTaylorA :: Precision -> Approx -> Approx
 logTaylorA _ Bottom = Bottom
-logTaylorA res (Approx m e s) =
+logTaylorA res (Approx mb m e s) =
     if m <= e then Bottom -- only defined for strictly positive arguments
     else
         let res' = res + errorBits
             r = s + integerLog2 (3*m) - 1
-            a' = Approx m e (s-r)  -- a' is a scaled by a power of 2 so that 2/3 <= a' <= 4/3
+            a' = approxMB mb m e (s-r)  -- a' is a scaled by a power of 2 so that 2/3 <= a' <= 4/3
             u = a' - 1
             v = a' + 1
             x = u * recipA (res') v  -- so |u/v| <= 1/5
@@ -1124,9 +1165,9 @@ sinTaylorRed1A res a =
 -- | Second level of range reduction for sine.
 sinTaylorRed2A :: Precision -> Approx -> Approx
 sinTaylorRed2A _ Bottom = Bottom
-sinTaylorRed2A res a@(Approx m _ s) = 
+sinTaylorRed2A res a@(Approx _ m _ s) = 
   let k = max 0 (integerLog2 m + s + (floor . sqrt $ fromIntegral res))
-      a' = a * recipA res (3^k)
+      a' = a * recipA res 3^k
       a2 = negate $ sqrA a'
       t = taylorA res (map (recipA res) oddFac) a2
       step x = boundErrorTerm $ x * (3 - 4 * sqrA x)
@@ -1138,7 +1179,7 @@ sinA = sinTaylorA
 
 -- | Computes the cosine of an approximation. Chooses the best implementation.
 cosA :: Precision -> Approx -> Approx
-cosA res x = sinA res ((Approx 1 0 (-1)) * piA res - x)
+cosA res x = sinA res ((Approx 1 1 0 (-1)) * piA res - x)
 
 -- | Computes the sine of an approximation by binary splitting summation of Taylor series.
 --
@@ -1147,18 +1188,18 @@ sinBinarySplittingA :: Precision -> Approx -> Approx
 sinBinarySplittingA _ Bottom = Bottom
 sinBinarySplittingA res a =
     let _pi = piBorweinA res
-        (Approx m' e' s') = 4 * a * recipA res _pi
+        (Approx mb' m' e' s') = 4 * a * recipA res _pi
         (k,m1) = m' `divMod` bit (-s')
-        a2 = _pi * fromDyadic (1:^(-2)) * (Approx m1 e' s')
+        a2 = _pi * fromDyadic mb' (1:^(-2)) * (Approx mb' m1 e' s')
     in case k `mod` 8 of
          0 -> sinInRangeA res a2
-         1 -> cosInRangeA res (_pi * fromDyadic (1:^(-2)) - a2)
+         1 -> cosInRangeA res (_pi * fromDyadic mb' (1:^(-2)) - a2)
          2 -> cosInRangeA res a2
-         3 -> sinInRangeA res (_pi * fromDyadic (1:^(-2)) - a2)
+         3 -> sinInRangeA res (_pi * fromDyadic mb' (1:^(-2)) - a2)
          4 -> - sinInRangeA res a2
-         5 -> - cosInRangeA res (_pi * fromDyadic (1:^(-2)) - a2)
+         5 -> - cosInRangeA res (_pi * fromDyadic mb' (1:^(-2)) - a2)
          6 -> - cosInRangeA res a2
-         7 -> - sinInRangeA res (_pi * fromDyadic (1:^(-2)) - a2)
+         7 -> - sinInRangeA res (_pi * fromDyadic mb' (1:^(-2)) - a2)
          _ -> error "Impossible"
 
 -- | Computes the cosine of an approximation by binary splitting summation of Taylor series.
@@ -1168,19 +1209,20 @@ cosBinarySplittingA :: Precision -> Approx -> Approx
 cosBinarySplittingA _ Bottom = Bottom
 cosBinarySplittingA res a =
     let _pi = piBorweinA res
-        (Approx m' e' s') = 4 * a * recipA res _pi
+        (Approx mb' m' e' s') = 4 * a * recipA res _pi
         (k,m1) = m' `divMod` bit (-s')
-        a2 = _pi * fromDyadic (1:^(-2)) * (Approx m1 e' s')
+        a2 = _pi * fromDyadic mb' (1:^(-2)) * (Approx mb' m1 e' s')
     in case k `mod` 8 of
          0 -> cosInRangeA res a2
-         1 -> sinInRangeA res (_pi * fromDyadic (1:^(-2)) - a2)
+         1 -> sinInRangeA res (_pi * fromDyadic mb' (1:^(-2)) - a2)
          2 -> - sinInRangeA res a2
-         3 -> - cosInRangeA res (_pi * fromDyadic (1:^(-2)) - a2)
+         3 -> - cosInRangeA res (_pi * fromDyadic mb' (1:^(-2)) - a2)
          4 -> - cosInRangeA res a2
-         5 -> - sinInRangeA res (_pi * fromDyadic (1:^(-2)) - a2)
+         5 -> - sinInRangeA res (_pi * fromDyadic mb' (1:^(-2)) - a2)
          6 -> sinInRangeA res a2
-         7 -> cosInRangeA res (_pi * fromDyadic (1:^(-2)) - a2)
+         7 -> cosInRangeA res (_pi * fromDyadic mb' (1:^(-2)) - a2)
          _ -> error "Impossible"
+
 
 -- | Computes the arc tangent of an approximation. Chooses the best implementation.
 atanA :: Precision -> Approx -> Approx
@@ -1204,7 +1246,7 @@ atanBinarySplittingA res a =
                           (repeat 1)
                           0
                           n
-      nextTerm = Approx 1 0 (-2*n)
+      nextTerm = Approx (mBound a + res) 1 0 (-2*n)
   in boundErrorTerm . (8*) $ fudge (t * recipA res (fromIntegral b*q)) nextTerm
 
 -- + Bottom
@@ -1274,7 +1316,7 @@ sinInRangeA res a =
                             (1:[2*i*(2*i+1) | i <- [1..]] :: [Approx])
                             0
                             n
-        nextTerm = fromDyadic (1:^(-res))
+        nextTerm = fromDyadic (mBound a + res) (1:^(-res))
     in boundErrorTerm $ fudge (t * recipA res (fromIntegral b*q)) nextTerm
 
 -- Computes cosine if second argument is in the range [0,pi/4]
@@ -1288,7 +1330,7 @@ cosInRangeA res a =
                             (1:[2*i*(2*i-1) | i <- [1..]] :: [Approx])
                             0
                             n
-        nextTerm = fromDyadic (1:^(-res))
+        nextTerm = fromDyadic (mBound a + res) (1:^(-res))
     in boundErrorTerm $ fudge (t * recipA res (fromIntegral b*q)) nextTerm
 
 {-|
@@ -1306,7 +1348,7 @@ piRaw = unfoldr f (1, (1, 1, 1, 13591409))
                 (pr, qr, br, tr) = abpq as bs ps qs i i2
                 n = 21+47*(i-1)
                 x = fromIntegral tl * recipA n (fromIntegral (bl*ql))
-                x1 = fudge x $ fromDyadic (1:^(-n))
+                x1 = fudge x $ fromDyadic (mBound x) (1:^(-n))
                 x2 = boundErrorTerm $ sqrtA n 1823176476672000 * recipA n x1
             in Just ( x2
                     , (i2, (pl * pr, ql * qr, bl * br, fromIntegral br * qr * tl + fromIntegral bl * pl * tr))
@@ -1317,34 +1359,38 @@ piA :: Precision -> Approx
 piA res = limitAndBound res . head $ dropWhile ((< pure res) . precision) piRaw
 
 {-|
-Second argument is noice to be added to first argument. Used to allow for the
+Second argument is noise to be added to first argument. Used to allow for the
 error term when truncating a series.
 -}
 fudge :: Approx -> Approx -> Approx
-fudge (Approx m 0 s) (Approx m' e' s') =
-  Approx (m `shift` (s - s')) (abs m' + e' + 1) s'
-fudge (Approx m e s) (Approx m' e' s') =
+fudge (Approx mb m 0 s) (Approx mb' m' e' s') =
+  approxMB2 mb mb' (m `shift` (s - s')) (abs m' + e' + 1) s'
+fudge (Approx mb m e s) (Approx mb' m' e' s') =
   let m'' = 1 + (abs m' + e') `shift` (s' - s + 1)
-  in Approx m (e+m'') s
+  in approxMB2 mb mb' m (e+m'') s
 fudge _ _  = Bottom
 
 --
 
 -- | Compute π using Machin's formula. Lifted from computation on dyadic numbers.
 piMachinA :: Precision -> Approx
-piMachinA t = let (m:^s) = piMachinD (-t) in Approx m 1 s
+piMachinA t = let (m:^s) = piMachinD (-t) in approxAutoMB m 1 s
 
 -- | Compute π using AGM as described in Borwein and Borwein's book 'Pi and
 -- the AGM'. Lifted from computation on dyadic numbers.
 piBorweinA :: Precision -> Approx
-piBorweinA t = let (m:^s) = piBorweinD (-t) in Approx m 1 s
+piBorweinA t = let (m:^s) = piBorweinD (-t) in approxAutoMB m 1 s
 
 
 -- | Compute π using AGM as described in Borwein and Borwein's book 'Pi and
 -- the AGM'.
 piAgmA :: Precision -> Approx -> Approx
-piAgmA t x = let t' = t - 10
-                 a = 1
+piAgmA t x_@(Approx mb_ _ _ _) = 
+             let t' = t - 10
+                 mb = mb_ + t
+                 setMB = mapMB (const mb)
+                 a = setMB 1
+                 x = setMB x_
                  b = boundErrorTerm $ (2*x*recipA (-t') (x^2-1))^2
                  ss = agmA t a b
                  c = boundErrorTerm . (1-) . (*recipA (-t') (1-b^2)) . agm2 . agm1 $ ss
@@ -1352,27 +1398,37 @@ piAgmA t x = let t' = t - 10
                  b2 = b^2
                  b3 = b2*b
                  b4 = b2^2
-                 l = boundErrorTerm $ (((Approx 1 0 (-1))*b-(Approx 3 0 (-4))*b2+(Approx 9 0 (-5))*b3)*c*d-1/(1+b)+(2+b2)/d) / ((2+(Approx 1 0 (-1))*b2+(Approx 9 0 (-5))*b4)*c+b2)
-                 u = boundErrorTerm $ ((Approx 1 0 (-1))*b*c*d-1/(1+b)+(2+b2+(Approx 3 0 (-3))*b3+(Approx 9 0 (-3))*b4)/d) / ((2+(Approx 1 0 (-1))*b2)*c+b2+(Approx 9 0 (-3))*b4)
+                 l = boundErrorTerm $ 
+                      (((Approx mb 1 0 (-1))*b-(Approx mb 3 0 (-4))*b2+(Approx mb 9 0 (-5))*b3)*c*d-1/(1+b)+(2+b2)/d) 
+                      / ((2+(Approx mb 1 0 (-1))*b2+(Approx mb 9 0 (-5))*b4)*c+b2)
+                 u = boundErrorTerm $ 
+                      ((Approx mb 1 0 (-1))*b*c*d-1/(1+b)+(2+b2+(Approx mb 3 0 (-3))*b3+(Approx mb 9 0 (-3))*b4)/d) 
+                      / ((2+(Approx mb 1 0 (-1))*b2)*c+b2+(Approx mb 9 0 (-3))*b4)
                  r = boundErrorTerm $ unionA l u
                  e = boundErrorTerm $ unionA
-                      ((2+(Approx 1 0 (-1))*b2)*r-(Approx 1 0 (-1))*b*d)
-                      ((2+(Approx 1 0 (-1))*b2+(Approx 9 0 (-5))*b4)*r-((Approx 1 0 (-1))*b-(Approx 3 0 (-4))*b2+(Approx 9 0 (-5))*b3)*d)
+                      ((2+(Approx mb 1 0 (-1))*b2)*r-(Approx mb 1 0 (-1))*b*d)
+                      ((2+(Approx mb 1 0 (-1))*b2+(Approx mb 9 0 (-5))*b4)*r
+                       -((Approx mb 1 0 (-1))*b-(Approx mb 3 0 (-4))*b2+(Approx mb 9 0 (-5))*b3)*d)
                  _pi = boundErrorTerm $ unionA (2*(snd (last ss))*e) (2*(fst (last ss))*e)
              in _pi
-                
+piAgmA _ _ = Bottom
+
 -- | Compute approximations of ln 2. Lifted from computation on dyadic numbers.
 log2A :: Precision -> Approx
-log2A t = let (m:^s) = ln2D t in Approx m 1 s
+log2A t = let (m:^s) = ln2D t in approxAutoMB m 1 s
+
 
 -- AGM
 
 -- | Compute logarithms using AGM as described in Borwein and Borwein's book 'Pi and
 -- the AGM'. An approximation of pi is produced as a by-product.
 lnSuperSizeUnknownPi :: Precision -> Approx -> (Approx,Approx)
-lnSuperSizeUnknownPi t x =
+lnSuperSizeUnknownPi t x_@(Approx mb_ _ _ _) =
     let t' = t - 10
-        a = 1
+        mb = mb_ + t
+        setMB = mapMB (const mb)
+        a = setMB 1
+        x = setMB x_
         b = boundErrorTerm $ (2*x*recipA (-t') (x^2-1))^2
         ss = agmA t a b
         (an,bn) = last ss
@@ -1382,54 +1438,66 @@ lnSuperSizeUnknownPi t x =
         b3 = b2*b
         b4 = b2^2
         l = boundErrorTerm $
-             (((Approx 1 0 (-1))*b-(Approx 3 0 (-4))*b2+(Approx 9 0 (-5))*b3)*c*d-1/(1+b)+(2+b2)/d)
-             / ((2+(Approx 1 0 (-1))*b2+(Approx 9 0 (-5))*b4)*c+b2)
+             (((Approx mb 1 0 (-1))*b-(Approx mb 3 0 (-4))*b2+(Approx mb 9 0 (-5))*b3)*c*d-1/(1+b)+(2+b2)/d)
+             / ((2+(Approx mb 1 0 (-1))*b2+(Approx mb 9 0 (-5))*b4)*c+b2)
         u = boundErrorTerm $
-             ((Approx 1 0 (-1))*b*c*d-1/(1+b)+(2+b2+(Approx 3 0 (-3))*b3+(Approx 9 0 (-3))*b4)/d)
-             / ((2+(Approx 1 0 (-1))*b2)*c+b2+(Approx 9 0 (-3))*b4)
+             ((Approx mb 1 0 (-1))*b*c*d-1/(1+b)+(2+b2+(Approx mb 3 0 (-3))*b3+(Approx mb 9 0 (-3))*b4)/d)
+             / ((2+(Approx mb 1 0 (-1))*b2)*c+b2+(Approx mb 9 0 (-3))*b4)
         r = boundErrorTerm $ unionA l u
         e = boundErrorTerm $ unionA
-             ((2+(Approx 1 0 (-1))*b2)*r-(Approx 1 0 (-1))*b*d)
-             ((2+(Approx 1 0 (-1))*b2+(Approx 9 0 (-5))*b4)*r
-              -((Approx 1 0 (-1))*b-(Approx 3 0 (-4))*b2+(Approx 9 0 (-5))*b3)*d)
+             ((2+(Approx mb 1 0 (-1))*b2)*r-(Approx mb 1 0 (-1))*b*d)
+             ((2+(Approx mb 1 0 (-1))*b2+(Approx mb 9 0 (-5))*b4)*r
+              -((Approx mb 1 0 (-1))*b-(Approx mb 3 0 (-4))*b2+(Approx mb 9 0 (-5))*b3)*d)
         _pi = boundErrorTerm $ unionA (2*bn*e) (2*an*e)
     in (r,_pi) --[a,b,c,d,b2,b3,b4,l,u,r,e,pi]
+lnSuperSizeUnknownPi _ Bottom = (Bottom, Bottom)
 
 -- | Compute logarithms using AGM as described in Borwein and Borwein's book 'Pi and
 -- the AGM'. An approximation of pi is needed as an extra argument.
 lnSuperSizeKnownPi :: Precision -> Approx -> Approx -> Approx
-lnSuperSizeKnownPi t _pi x =
+lnSuperSizeKnownPi _t _pi Bottom = Bottom
+lnSuperSizeKnownPi t _pi x_@(Approx mb_ _ _ _) =
     let t' = t - 10
-        a = 1
+        mb = mb_ + t
+        setMB = mapMB (const mb)
+        a = setMB 1
+        x = setMB x_
         b = boundErrorTerm $ (2*x*recipA (-t') (x^2-1))^2
         b2 = b^2
         b3 = b2*b
         b4 = b2^2
         b1sqrt = sqrtA (-t') (1+b)
-        step (_a,_b) = (boundErrorTerm $ Approx 1 0 (-1) * (_a+_b)
+        step (_a,_b) = (boundErrorTerm $ Approx mb 1 0 (-1) * (_a+_b)
                        ,boundErrorTerm $ sqrtA (-t') (_a*_b))
         close (_a,_b) = approximatedBy 0 $ _a-_b
         ((an,bn):_) = dropWhile (not . close) $ iterate step (a,b)
         i = boundErrorTerm $ unionA (_pi*recipA (-t') (2*an)) (_pi*recipA (-t') (2*bn))
-        l = (i + ((Approx 1 0 (-1))*b-(Approx 3 0 (-4))*b2+(Approx 9 0 (-5))*b3)*b1sqrt)
-            / (2 + (Approx 1 0 (-1))*b2 + (Approx 9 0 (-5))*b4)
-        u = (i + (Approx 1 0 (-1))*b*b1sqrt) / (2 + (Approx 1 0 (-1))*b2)
+        l = (i + ((Approx mb 1 0 (-1))*b-(Approx mb 3 0 (-4))*b2+(Approx mb 9 0 (-5))*b3)*b1sqrt)
+            / (2 + (Approx mb 1 0 (-1))*b2 + (Approx mb 9 0 (-5))*b4)
+        u = (i + (Approx mb 1 0 (-1))*b*b1sqrt) / (2 + (Approx mb 1 0 (-1))*b2)
     in boundErrorTerm $ unionA l u
 
 lnLarge :: Precision -> Approx -> Approx
-lnLarge t x =
+lnLarge _t Bottom = Bottom
+lnLarge t x_@(Approx mb_ _ _ _) =
     let (Finite k) = min (significance x) (Finite (-t))
+        mb = mb_ + t
+        setMB = mapMB (const mb)
+        x = setMB x_
         _pi = piBorweinA t
         iL2 = integerLog2
         fI = fromIntegral
         n = max 0 . (1+) . (+(iL2 (fI k)-2)) . negate . iL2 . fI . iL2 . truncate $ toRational x
-        (Approx m e s) = lnSuperSizeKnownPi t _pi $ x^(2^n)
-    in Approx m e (s-n)
+        (Approx mb2 m e s) = lnSuperSizeKnownPi t _pi $ x^(2^n)
+    in Approx mb2 m e (s-n)
 
 lnSmall :: Precision -> Approx -> Approx
 lnSmall _ Bottom = Bottom
-lnSmall t x@(Approx m _ s) =
+lnSmall t x_@(Approx mb_ m _ s) =
     let (Finite t') = min (significance x) (Finite (-t))
+        mb = mb_ + t
+        setMB = mapMB (const mb)
+        x = setMB x_
         _pi = piBorweinA t'
         iL2 = integerLog2
         -- fI = fromIntegral
@@ -1452,7 +1520,7 @@ logAgmA t x
 
 agmA :: Precision -> Approx -> Approx -> [(Approx,Approx)]
 agmA t a b = let t' = t - 5
-                 step (_a,_b) = (boundErrorTerm $ Approx 1 0 (-1) * (a+b), boundErrorTerm $ sqrtA (-t') (_a*_b))
+                 step (_a,_b) = (boundErrorTerm $ Approx t 1 0 (-1) * (a+b), boundErrorTerm $ sqrtA (-t') (_a*_b))
                  close (_a,_b) = approximatedBy 0 $ _a-_b
              in (\(as, bs) -> as ++ take 1 bs) . break close $ iterate step (a,b)
 
@@ -1460,7 +1528,7 @@ sqDiff :: Approx -> Approx -> Approx
 sqDiff a b = boundErrorTerm $ a^2 - b^2
 
 agm1 :: [(Approx, Approx)] -> [Approx]
-agm1 = zipWith (*) [Approx 1 0 i | i <- [-1,0..]] . map (uncurry sqDiff)
+agm1 = zipWith (*) [Approx 4 1 0 i | i <- [-1,0..]] . map (uncurry sqDiff)
 
 agm2 :: [Approx] -> Approx
 agm2 xs = sum (init xs) + unionA 0 (2 * last xs)
@@ -1468,8 +1536,12 @@ agm2 xs = sum (init xs) + unionA 0 (2 * last xs)
 -- | Compute logarithms using AGM as described in Borwein and Borwein's book 'Pi and
 -- the AGM'.
 agmLn :: Precision -> Approx -> Approx
-agmLn t x = let t' = t - 10
-                a = 1
+agmLn t x_@(Approx mb_ _ _ _) = 
+            let t' = t - 10
+                mb = mb_ + t
+                setMB = mapMB (const mb)
+                a = setMB 1
+                x = setMB x_
                 b = boundErrorTerm $ (2*x*recipA (-t') (x^2-1))^2
                 ss = agmA t a b
                 -- (an,bn) = last ss
@@ -1480,16 +1552,16 @@ agmLn t x = let t' = t - 10
                 b4 = b2^2
 --                l = boundErrorTerm $ (((Approx 1 0 (-1))*b-(Approx 3 0 (-4))*b2+(Approx 9 0 (-5))*b3)*c*d-recipA t' (1+b)+(2+b2)*recipA t' d) * recipA t' ((2+(Approx 1 0 (-1))*b2+(Approx 9 0 (-5))*b4)*c+b2)
 --                u = boundErrorTerm $ ((Approx 1 0 (-1))*b*c*d-recipA t' (1+b)+(2+b2+(Approx 3 0 (-3))*b3+(Approx 9 0 (-3))*b4)*recipA t' d) *recipA t' ((2+(Approx 1 0 (-1))*b2)*c+b2+(Approx 9 0 (-3))*b4)
-                l = boundErrorTerm $ (((Approx 1 0 (-1))*b-(Approx 3 0 (-4))*b2+(Approx 9 0 (-5))*b3)*c*d-1/(1+b)+(2+b2)/d) / ((2+(Approx 1 0 (-1))*b2+(Approx 9 0 (-5))*b4)*c+b2)
-                u = boundErrorTerm $ ((Approx 1 0 (-1))*b*c*d-1/(1+b)+(2+b2+(Approx 3 0 (-3))*b3+(Approx 9 0 (-3))*b4)/d) / ((2+(Approx 1 0 (-1))*b2)*c+b2+(Approx 9 0 (-3))*b4)
+                l = boundErrorTerm $ (((Approx mb 1 0 (-1))*b-(Approx mb 3 0 (-4))*b2+(Approx mb 9 0 (-5))*b3)*c*d-1/(1+b)+(2+b2)/d) / ((2+(Approx mb 1 0 (-1))*b2+(Approx mb 9 0 (-5))*b4)*c+b2)
+                u = boundErrorTerm $ ((Approx mb 1 0 (-1))*b*c*d-1/(1+b)+(2+b2+(Approx mb 3 0 (-3))*b3+(Approx mb 9 0 (-3))*b4)/d) / ((2+(Approx mb 1 0 (-1))*b2)*c+b2+(Approx mb 9 0 (-3))*b4)
                 r = boundErrorTerm $ unionA l u
                 e = boundErrorTerm $ unionA
-                      ((2+(Approx 1 0 (-1))*b2)*r-(Approx 1 0 (-1))*b*d)
-                      ((2+(Approx 1 0 (-1))*b2+(Approx 9 0 (-5))*b4)*r-((Approx 1 0 (-1))*b-(Approx 3 0 (-4))*b2+(Approx 9 0 (-5))*b3)*d)
+                      ((2+(Approx mb 1 0 (-1))*b2)*r-(Approx mb 1 0 (-1))*b*d)
+                      ((2+(Approx mb 1 0 (-1))*b2+(Approx mb 9 0 (-5))*b4)*r-((Approx mb 1 0 (-1))*b-(Approx mb 3 0 (-4))*b2+(Approx mb 9 0 (-5))*b3)*d)
                 _pi = boundErrorTerm $ unionA (2*(snd (last ss))*e) (2*(fst (last ss))*e)
             in r --[a,b,c,d,b2,b3,b4,l,u,r,e,_pi]
+agmLn _t _ = Bottom
   
-
 -- The CR implementation
 
 type Resources = Int
@@ -1513,7 +1585,7 @@ instance Num CR where
     negate (CR x) = CR $ negate <$> x
     abs (CR x) = CR $ abs <$> x
     signum (CR x) = CR $ signum <$> x
-    fromInteger n = CR $ pure (Approx n 0 0)
+    fromInteger n = CR $ pure (fromInteger n)
 
 instance Fractional CR where
     recip (CR x) = CR $ recipA <$> resources <*> x
@@ -1546,9 +1618,9 @@ instance Read CR where
   readsPrec _ input =
     let (intPart, rest) = span isDigit input
     in if null rest || head rest /= '.'
-       then [(CR $ pure (Approx (read intPart :: Integer) 0 0), rest)]
+       then [(CR $ pure (fromInteger (read intPart :: Integer)), rest)]
        else let (fracPart, rest') = span isDigit (tail rest)
-            in [((CR $ pure (Approx (read (intPart ++ fracPart) :: Integer) 0 0)) / 10^(length fracPart), rest')]
+            in [((CR $ pure (fromInteger (read (intPart ++ fracPart) :: Integer))) / 10^(length fracPart), rest')]
 
 -- | Check that an approximation has at least /d/ bits of precision. This is
 -- used to bail out of computations where the size of approximation grow
@@ -1573,7 +1645,7 @@ fromDouble x =
   -- corresponds to 1024, which is what IEEE 754 use to encode infinity and
   -- NaN.
   in if (m == 972) then CR $ pure Bottom
-     else CR $ pure (Approx m 1 s)
+     else CR $ pure (Approx 64 m 1 s)
 
 fromDoubleAsExactValue :: Double -> CR
 fromDoubleAsExactValue x =
@@ -1583,7 +1655,7 @@ fromDoubleAsExactValue x =
   -- corresponds to 1024, which is what IEEE 754 use to encode infinity and
   -- NaN.
   in if (m == 972) then CR $ pure Bottom
-     else CR $ pure (Approx m 0 s)
+     else CR $ pure (Approx 64 m 0 s)
 
 transposeZipList :: [ZipList a] -> ZipList [a]
 transposeZipList = ZipList . transpose . map getZipList
@@ -1601,7 +1673,7 @@ taylorCR as (CR x) =
     <$> transposeZipList (map unCR as) <*> x <*> resources
 
 epsilon :: CR
-epsilon = CR $ Approx 0 1 . negate <$> resources
+epsilon = CR $ Approx 10 0 1 . negate <$> resources
 
 -- | The square root function. Lifted from square root application on 'Approx'
 -- approximations.
@@ -1656,7 +1728,7 @@ sinRangeReduction (CR x) = (subtract halfPi) . abs . (pi -) . abs . (subtract ha
 sinRangeReduction2 :: CR -> CR
 sinRangeReduction2 (CR x) =
   let k = (\a -> case a of 
-                   (Approx m _ s) -> max 0 $ 8 * (integerLog2 m + s + 3) `div` 5
+                   (Approx _ m _ s) -> max 0 $ 8 * (integerLog2 m + s + 3) `div` 5
                    Bottom -> 0) <$> x
       (CR y) = sinCRTaylor ((CR x) / (CR $ fromIntegral . (3^) <$> k))
       step z = z*(3-4*z^2)
@@ -1695,5 +1767,3 @@ instance Floating CR where
   asinh x = log (x + sqrt (x^2 + 1))
   acosh x = CR $ logA <$> resources <*> unCR (x + sqrt (x^2 - 1))
   atanh x = (CR $ logA <$> resources <*> unCR ((1+x) / (1-x))) / 2
-
--}
