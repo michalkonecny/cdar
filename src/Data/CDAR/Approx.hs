@@ -1102,7 +1102,7 @@ logA p x@(Approx _ m e _)
 --    in endToApprox (Finite ((n-1):^t)) (Finite ((n'+1):^t'))
   | otherwise = Bottom
 
-logInternal :: Int -> Approx -> Approx
+logInternal :: Precision -> Approx -> Approx
 logInternal _ Bottom = error "LogInternal: impossible"
 logInternal p (Approx mb m e s) =
   let t' = (negate p) - 10 - max 0 (integerLog2 m + s) -- (5 + size of argument) guard digits
@@ -1111,7 +1111,7 @@ logInternal p (Approx mb m e s) =
       y = divD' t' (x - 1) (x + 1) -- so |y| <= 1/5
       (n :^ s') = flip scale 1 $ atanhD t' y
       (e' :^ s'') = divD' t' (e:^(s-r)) x -- Estimate error term.
-      res = approxMB mb n (scale (e' + 1) (s'' - s')) s'
+      res = approxMB (mb + p) n (scale (e' + 1) (s'' - s')) s'
   in boundErrorTerm $ res + fromIntegral r * log2A t'
 
 -- | Logarithm by binary splitting summation of Taylor series.
