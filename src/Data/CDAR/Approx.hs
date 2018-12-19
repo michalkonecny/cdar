@@ -63,7 +63,7 @@ module Data.CDAR.Approx (Approx(..)
                         ,sqrA
                         ,log2Factorials
                         ,taylorA
-                        -- ,expAunsafeShiftL
+                        ,expA
                         ,expBinarySplittingA
                         ,expTaylorA
                         ,expTaylorA'
