@@ -1276,7 +1276,7 @@ atanTaylorA res a =
       k = min (floor (sqrt (fromIntegral r)) `div` 2) 2
       res' = res + k + 5
       rr _x = _x * recipA res' (1 + sqrtA res' (1 + sqrA _x))
-      x = boundErrorTerm $ iterate rr a !! k
+      x = boundErrorTerm $ iterate rr (mapMB (const res') a) !! k
       x2 = negate (sqrA x)
       t = boundErrorTerm $ x * taylorA res' (map (recipA res') [1,3..]) x2
   in scale t k
