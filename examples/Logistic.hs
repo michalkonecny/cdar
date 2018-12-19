@@ -26,13 +26,13 @@ logMap x = 4*x*(1-x)
 
 logMap2 :: Approx -> Approx
 logMap2 Bottom = Bottom
-logMap2 (Approx m e s) =
+logMap2 (Approx mb m e s) =
     let one = bit (-s)
         t = abs (bit (-s-1) - m)
     in boundErrorTerm $
        if t >= e
-       then Approx (m*(one-m)-e^2) (e * abs (one-2*m)) (2*s)
-       else Approx (bit (-2*s - 2)) ((t + e)^2) (2*s)
+       then approxMB mb (m*(one-m)-e^2) (e * abs (one-2*m)) (2*s)
+       else approxMB mb (bit (-2*s - 2)) ((t + e)^2) (2*s)
 
 orbit :: Fractional a => [a]
 orbit = iterate logMap (fromRational (1%8))

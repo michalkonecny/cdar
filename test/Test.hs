@@ -7,7 +7,7 @@ import Test.SmallCheck.Series as SC
 import GHC.Generics
 
 import Control.Applicative (ZipList (..))
-import Control.Monad (liftM, liftM3)
+import Control.Monad (liftM, liftM3, liftM4)
 import Data.Functor
 
 import Data.List
@@ -102,23 +102,25 @@ approx :: TestTree
 approx = testGroup "Approx" [scPropA, qcPropA]
 
 instance Monad m => Serial m Approx where
-  series = cons0 Bottom \/ (tripleToApprox <$> series)
+  series = cons0 Bottom \/ (quadToApprox <$> series)
     where
-      tripleToApprox (m, SC.NonNegative e, s) = Approx m e s
+      quadToApprox (SC.Positive mb, m, SC.NonNegative e, s) = approxMB mb m e s
 
 instance Arbitrary Approx where
     arbitrary = frequency [(10,
-                            liftM3 Approx
+                            liftM3 approxAutoMB
                                    arbitrary 
                                    (return 0)
                                    (choose (-100,20))),
                            (25,
-                            liftM3 Approx
+                            liftM4 approxMB
+                                   (choose (10,100000))
                                    arbitrary 
                                    (elements [1,2,3,254,255,256,257,510,511,512,513,767,768,1020,1021,1022,1023,1024,1025])
                                    (choose (-100,20))),
                            (60,
-                            liftM3 Approx
+                            liftM4 approxMB
+                                   (choose (10,100000))
                                    arbitrary 
                                    (choose (0,10))
                                    (choose (-100,20))),
@@ -137,14 +139,14 @@ scPropA = testGroup "(checked by smallcheck)"
   , SC.testProperty "a*(1/a) contains 1" $ \a -> not (0 `approximatedBy` a) SC.==> 1 `approximatedBy` (a*(1/a))
   , SC.testProperty "boundErrorTerm" $
     \a -> case a of
-            Approx _ _ _ -> let b@(Approx _ e _) = boundErrorTerm a
-                            in (a `better` b) && (e < 1024) -- 1024 is errorBound when errorBits is 10
-            Bottom       -> better a (boundErrorTerm a)
+            Approx _ _ _ _ -> let b@(Approx _ _ e _) = boundErrorTerm a
+                              in (a `better` b) && (e < 1024) -- 1024 is errorBound when errorBits is 10
+            Bottom         -> better a (boundErrorTerm a)
   , SC.testProperty "limitSize" $
     \a -> case a of
-            Approx _ _ _ -> let b@(Approx _ _ s) = limitSize 2 a
-                            in (a `better` b) && (s >= -2)
-            Bottom       -> better a (limitSize 2 a)
+            Approx _ _ _ _ -> let b@(Approx _ _ _ s) = limitSize 2 a
+                              in (a `better` b) && (s >= -2)
+            Bottom         -> better a (limitSize 2 a)
   , SC.testProperty "sqrt" $ \a -> let b = abs a in better b $ (sqrtA 0 b)^2
   , SC.testProperty "recipA" $ \a -> let b = abs a in 0 `approximatedBy` b || (lowerBound (recipA 100 b) * upperBound b <= 1
                                                                                && upperBound (recipA 100 b) * lowerBound b >= 1)
@@ -171,14 +173,14 @@ qcPropA = testGroup "(checked by quickcheck)"
   , QC.testProperty "a*(1/a) contains 1" $ \a -> not (0 `approximatedBy` a) QC.==> 1 `approximatedBy` (a*(1/a))
   , QC.testProperty "boundErrorTerm" $
     \a -> case a of 
-            Approx _ _ _ -> let b@(Approx _ e _) = boundErrorTerm a
-                            in (a `better` b) && (e < 1024) -- 1024 is errorBound when errorBits is 10
-            Bottom       -> better a (boundErrorTerm a)
+            Approx _ _ _ _ -> let b@(Approx _ _ e _) = boundErrorTerm a
+                              in (a `better` b) && (e < 1024) -- 1024 is errorBound when errorBits is 10
+            Bottom         -> better a (boundErrorTerm a)
   , QC.testProperty "limitSize" $
     \a -> case a of 
-            Approx _ _ _ -> let b@(Approx _ _ s) = limitSize 2 a
-                            in (a `better` b) && (s >= -2)
-            Bottom       -> better a (limitSize 2 a)
+            Approx _ _ _ _ -> let b@(Approx _ _ _ s) = limitSize 2 a
+                              in (a `better` b) && (s >= -2)
+            Bottom       ->   better a (limitSize 2 a)
   , QC.testProperty "values" $ \a -> let types = a :: Approx in collect a True
   , QC.testProperty "sqr . sqrt" $ \a -> let b = abs a in b `better` sqrA (sqrtA 0 b)
   , QC.testProperty "sqrt . sqr" $ \a -> abs a `better` sqrtA 0 (sqrA a)
@@ -198,14 +200,14 @@ genCR = do
   let (m,_) = decodeFloat x
   s <- choose (-125,-42) :: Gen Int
   s' <- choose (-56,-51) :: Gen Int
-  frequency [(2, return . CR . pure $ Approx m 0 s)
-            ,(2, return . CR . pure $ Approx m 0 s')
-            ,(2, return . CR . pure $ Approx (-m) 0 s)
-            ,(2, return . CR . pure $ Approx (-m) 0 s')
-            ,(1, return . CR . pure $ Approx m 1 s)
-            ,(1, return . CR . pure $ Approx m 1 s')
-            ,(1, return . CR . pure $ Approx (-m) 1 s)
-            ,(1, return . CR . pure $ Approx (-m) 1 s')
+  frequency [(2, return . CR . pure $ approxAutoMB m 0 s)
+            ,(2, return . CR . pure $ approxAutoMB m 0 s')
+            ,(2, return . CR . pure $ approxAutoMB (-m) 0 s)
+            ,(2, return . CR . pure $ approxAutoMB (-m) 0 s')
+            ,(1, return . CR . pure $ approxAutoMB m 1 s)
+            ,(1, return . CR . pure $ approxAutoMB m 1 s')
+            ,(1, return . CR . pure $ approxAutoMB (-m) 1 s)
+            ,(1, return . CR . pure $ approxAutoMB (-m) 1 s')
             ]
 
 genCROpen :: CR -> CR -> Gen CR
@@ -289,8 +291,8 @@ qcPropCR = testGroup "(checked by quickCheck)"
   ]
 
 unitTests = testGroup "Unit tests"
-  [ testCase "showA 1" $ showA (Approx 7 2 2) @?= "3~"
-  , testCase "showA 2" $ showA (Approx 7 2 3) @?= "~~"
-  , testCase "showA (Approx 99 2 0)" $ showA (Approx 99 2 0) @?= "10~"
+  [ testCase "showA 1" $ showA (Approx 3 7 2 2) @?= "3~"
+  , testCase "showA 2" $ showA (Approx 3 7 2 3) @?= "~~"
+  , testCase "showA (Approx 99 2 0)" $ showA (Approx 8 99 2 0) @?= "10~"
   , testCase "sin π/2 = 1 (1000 bits)" $ approximatedBy 1 (require 1000 . sin $ pi/2) @?= True
   ]
