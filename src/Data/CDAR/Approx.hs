@@ -1586,8 +1586,8 @@ resources = ZipList $ iterate bumpLimit startLimit
 --     show = show . require 40
 
 instance Num CR where
-    (CR x) + (CR y) = CR $ (\a b l -> ok 10 $ limitAndBound l (a + b)) <$> x <*> y <*> resources
-    (CR x) * (CR y) = CR $ (\a b l -> ok 10 $ limitAndBound l (a * b)) <$> x <*> y <*> resources
+    (CR x) + (CR y) = CR $ (\a b l -> ok 10 $ limitAndBound l (a + (mapMB (max l) b))) <$> x <*> y <*> resources
+    (CR x) * (CR y) = CR $ (\a b l -> ok 10 $ limitAndBound l (a * (mapMB (max l) b))) <$> x <*> y <*> resources
     negate (CR x) = CR $ negate <$> x
     abs (CR x) = CR $ abs <$> x
     signum (CR x) = CR $ signum <$> x
