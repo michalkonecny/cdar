@@ -17,6 +17,9 @@ module Data.CDAR.Approx (Approx(..)
                         ,showA
                         ,showInBaseA
                         ,mBound
+                        ,approxAutoMB
+                        ,approxMB
+                        ,approxMB2
                         ,endToApprox
                         ,lowerBound
                         ,upperBound
@@ -30,6 +33,7 @@ module Data.CDAR.Approx (Approx(..)
                         ,approximatedBy
                         ,better
                         ,fromDyadic
+                        ,fromDyadicMB
                         ,toApprox
                         ,recipA
                         ,divAInteger
@@ -464,8 +468,12 @@ d `better` e = lowerBound d >= lowerBound e &&
                upperBound d <= upperBound e
 
 -- |Turns a 'Dyadic' number into an exact approximation.
-fromDyadic :: Int -> Dyadic -> Approx
-fromDyadic bs (m:^s) = approxMB bs m 0 s
+fromDyadic :: Dyadic -> Approx
+fromDyadic (m:^s) = approxAutoMB m 0 s
+
+-- |Turns a 'Dyadic' number into an exact approximation.
+fromDyadicMB :: Int -> Dyadic -> Approx
+fromDyadicMB mb (m:^s) = approxMB mb m 0 s
 
 -- |Two approximations are equal if they encode the same interval.
 instance Eq Approx where
@@ -1190,16 +1198,16 @@ sinBinarySplittingA res a =
     let _pi = piBorweinA res
         (Approx mb' m' e' s') = 4 * a * recipA res _pi
         (k,m1) = m' `divMod` bit (-s')
-        a2 = _pi * fromDyadic mb' (1:^(-2)) * (Approx mb' m1 e' s')
+        a2 = _pi * fromDyadicMB mb' (1:^(-2)) * (Approx mb' m1 e' s')
     in case k `mod` 8 of
          0 -> sinInRangeA res a2
-         1 -> cosInRangeA res (_pi * fromDyadic mb' (1:^(-2)) - a2)
+         1 -> cosInRangeA res (_pi * fromDyadicMB mb' (1:^(-2)) - a2)
          2 -> cosInRangeA res a2
-         3 -> sinInRangeA res (_pi * fromDyadic mb' (1:^(-2)) - a2)
+         3 -> sinInRangeA res (_pi * fromDyadicMB mb' (1:^(-2)) - a2)
          4 -> - sinInRangeA res a2
-         5 -> - cosInRangeA res (_pi * fromDyadic mb' (1:^(-2)) - a2)
+         5 -> - cosInRangeA res (_pi * fromDyadicMB mb' (1:^(-2)) - a2)
          6 -> - cosInRangeA res a2
-         7 -> - sinInRangeA res (_pi * fromDyadic mb' (1:^(-2)) - a2)
+         7 -> - sinInRangeA res (_pi * fromDyadicMB mb' (1:^(-2)) - a2)
          _ -> error "Impossible"
 
 -- | Computes the cosine of an approximation by binary splitting summation of Taylor series.
@@ -1211,16 +1219,16 @@ cosBinarySplittingA res a =
     let _pi = piBorweinA res
         (Approx mb' m' e' s') = 4 * a * recipA res _pi
         (k,m1) = m' `divMod` bit (-s')
-        a2 = _pi * fromDyadic mb' (1:^(-2)) * (Approx mb' m1 e' s')
+        a2 = _pi * fromDyadicMB mb' (1:^(-2)) * (Approx mb' m1 e' s')
     in case k `mod` 8 of
          0 -> cosInRangeA res a2
-         1 -> sinInRangeA res (_pi * fromDyadic mb' (1:^(-2)) - a2)
+         1 -> sinInRangeA res (_pi * fromDyadicMB mb' (1:^(-2)) - a2)
          2 -> - sinInRangeA res a2
-         3 -> - cosInRangeA res (_pi * fromDyadic mb' (1:^(-2)) - a2)
+         3 -> - cosInRangeA res (_pi * fromDyadicMB mb' (1:^(-2)) - a2)
          4 -> - cosInRangeA res a2
-         5 -> - sinInRangeA res (_pi * fromDyadic mb' (1:^(-2)) - a2)
+         5 -> - sinInRangeA res (_pi * fromDyadicMB mb' (1:^(-2)) - a2)
          6 -> sinInRangeA res a2
-         7 -> cosInRangeA res (_pi * fromDyadic mb' (1:^(-2)) - a2)
+         7 -> cosInRangeA res (_pi * fromDyadicMB mb' (1:^(-2)) - a2)
          _ -> error "Impossible"
 
 
@@ -1316,7 +1324,7 @@ sinInRangeA res a =
                             (1:[2*i*(2*i+1) | i <- [1..]] :: [Approx])
                             0
                             n
-        nextTerm = fromDyadic (mBound a + res) (1:^(-res))
+        nextTerm = fromDyadicMB (mBound a + res) (1:^(-res))
     in boundErrorTerm $ fudge (t * recipA res (fromIntegral b*q)) nextTerm
 
 -- Computes cosine if second argument is in the range [0,pi/4]
@@ -1330,7 +1338,7 @@ cosInRangeA res a =
                             (1:[2*i*(2*i-1) | i <- [1..]] :: [Approx])
                             0
                             n
-        nextTerm = fromDyadic (mBound a + res) (1:^(-res))
+        nextTerm = fromDyadicMB (mBound a + res) (1:^(-res))
     in boundErrorTerm $ fudge (t * recipA res (fromIntegral b*q)) nextTerm
 
 {-|
@@ -1348,7 +1356,7 @@ piRaw = unfoldr f (1, (1, 1, 1, 13591409))
                 (pr, qr, br, tr) = abpq as bs ps qs i i2
                 n = 21+47*(i-1)
                 x = fromIntegral tl * recipA n (fromIntegral (bl*ql))
-                x1 = fudge x $ fromDyadic (mBound x) (1:^(-n))
+                x1 = fudge x $ fromDyadicMB (mBound x) (1:^(-n))
                 x2 = boundErrorTerm $ sqrtA n 1823176476672000 * recipA n x1
             in Just ( x2
                     , (i2, (pl * pr, ql * qr, bl * br, fromIntegral br * qr * tl + fromIntegral bl * pl * tr))
