@@ -17,6 +17,8 @@ module Data.CDAR.Approx (Approx(..)
                         ,showA
                         ,showInBaseA
                         ,mBound
+                        ,mapMB
+                        ,setMB
                         ,approxAutoMB
                         ,approxMB
                         ,approxMB2
@@ -369,6 +371,10 @@ approxAutoMB m e s = Approx mb m e s
 mapMB :: (Int -> Int) -> Approx -> Approx
 mapMB f (Approx mb m e s) = Approx (f mb) m e s
 mapMB _f Bottom = Bottom
+
+setMB :: Int -> Approx -> Approx
+setMB mb = mapMB (const mb)
+
 
 approxMB :: Int -> Integer -> Integer -> Int -> Approx
 approxMB mb m e s = 
@@ -1032,13 +1038,13 @@ expBinarySplittingA res a@(Approx mb m e s) =
       r = s' + r'
       -- a' is a scaled by 2^k so that 2^(-r') <= a' < 2^(-r'+1)
       a' = Approx mb m e (s-r)
-      setMB = mapMB (const (mb+res))
+      mb' = mb+res
       -- (Finite c) = min (significance a) (Finite res)
       (Just n) = findIndex (>= res+r) $ zipWith (+) log2Factorials [0,r'..]
       (p, q, b, t) = abpq ones
                           ones
-                          (map setMB $ 1:repeat a')
-                          (map setMB $ 1:[1..])
+                          (map (setMB mb') $ 1:repeat a')
+                          (map (setMB mb') $ 1:[1..])
                           0
                           n
       nextTerm = a * p * recipA (res+r) (fromIntegral n * q)
@@ -1396,9 +1402,8 @@ piAgmA :: Precision -> Approx -> Approx
 piAgmA t x_@(Approx mb_ _ _ _) = 
              let t' = t - 10
                  mb = mb_ + t
-                 setMB = mapMB (const mb)
-                 a = setMB 1
-                 x = setMB x_
+                 a = setMB mb 1
+                 x = setMB mb x_
                  b = boundErrorTerm $ (2*x*recipA (-t') (x^2-1))^2
                  ss = agmA t a b
                  c = boundErrorTerm . (1-) . (*recipA (-t') (1-b^2)) . agm2 . agm1 $ ss
@@ -1434,9 +1439,8 @@ lnSuperSizeUnknownPi :: Precision -> Approx -> (Approx,Approx)
 lnSuperSizeUnknownPi t x_@(Approx mb_ _ _ _) =
     let t' = t - 10
         mb = mb_ + t
-        setMB = mapMB (const mb)
-        a = setMB 1
-        x = setMB x_
+        a = setMB mb 1
+        x = setMB mb x_
         b = boundErrorTerm $ (2*x*recipA (-t') (x^2-1))^2
         ss = agmA t a b
         (an,bn) = last ss
@@ -1467,9 +1471,8 @@ lnSuperSizeKnownPi _t _pi Bottom = Bottom
 lnSuperSizeKnownPi t _pi x_@(Approx mb_ _ _ _) =
     let t' = t - 10
         mb = mb_ + t
-        setMB = mapMB (const mb)
-        a = setMB 1
-        x = setMB x_
+        a = setMB mb 1
+        x = setMB mb x_
         b = boundErrorTerm $ (2*x*recipA (-t') (x^2-1))^2
         b2 = b^2
         b3 = b2*b
@@ -1489,9 +1492,7 @@ lnLarge :: Precision -> Approx -> Approx
 lnLarge _t Bottom = Bottom
 lnLarge t x_@(Approx mb_ _ _ _) =
     let (Finite k) = min (significance x) (Finite (-t))
-        mb = mb_ + t
-        setMB = mapMB (const mb)
-        x = setMB x_
+        x = setMB (mb_ + t) x_
         _pi = piBorweinA t
         iL2 = integerLog2
         fI = fromIntegral
@@ -1503,9 +1504,7 @@ lnSmall :: Precision -> Approx -> Approx
 lnSmall _ Bottom = Bottom
 lnSmall t x_@(Approx mb_ m _ s) =
     let (Finite t') = min (significance x) (Finite (-t))
-        mb = mb_ + t
-        setMB = mapMB (const mb)
-        x = setMB x_
+        x = setMB (mb_ + t) x_
         _pi = piBorweinA t'
         iL2 = integerLog2
         -- fI = fromIntegral
@@ -1547,9 +1546,8 @@ agmLn :: Precision -> Approx -> Approx
 agmLn t x_@(Approx mb_ _ _ _) = 
             let t' = t - 10
                 mb = mb_ + t
-                setMB = mapMB (const mb)
-                a = setMB 1
-                x = setMB x_
+                a = setMB mb 1
+                x = setMB mb x_
                 b = boundErrorTerm $ (2*x*recipA (-t') (x^2-1))^2
                 ss = agmA t a b
                 -- (an,bn) = last ss
