@@ -1076,7 +1076,7 @@ expTaylorA' res (Approx mb m e s) =
       r' = floor . sqrt . fromIntegral . max 5 $ res
       r = max 0 $ s' + r'
       -- a' is a scaled by 2^k so that 2^(-r') <= a' < 2^(-r'+1)
-      a' = (Approx mb m e (s-r))
+      a' = (Approx (mb `max` (res + r)) m e (s-r))
       t = taylorA
             (res + r)
             (map (recipA (res+r)) fac)
