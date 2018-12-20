@@ -11,13 +11,13 @@ logMap c x = (fromRational c)*x*(1-x)
 
 logMap2 :: Approx -> Approx
 logMap2 Bottom = Bottom
-logMap2 (Approx m e s) =
+logMap2 (Approx mb m e s) =
     let one = bit (-s)
         t = abs (bit (-s-1) - m)
     in boundErrorTerm $
        if t >= e
-       then Approx (m*(one-m)-e^2) (e * abs (one-2*m)) (2*s)
-       else Approx (bit (-2*s - 2)) ((t + e)^2) (2*s)
+       then approxMB mb (m*(one-m)-e^2) (e * abs (one-2*m)) (2*s)
+       else approxMB mb (bit (-2*s - 2)) ((t + e)^2) (2*s)
 
 orbit :: Fractional a => Rational -> [a]
 orbit c = iterate (logMap c) (fromRational (1%8))
@@ -63,15 +63,15 @@ newSuite =
     ]
   , bgroup "logappr"
     [ bench "doubleLog" $ nf log (1.5 :: Double)
-    , bench "40B" $ nf (logBinarySplittingA 40) (Approx 3 0 (-1))
-    , bench "40T" $ nf (logTaylorA 40) (Approx 3 0 (-1))
-    , bench "40agm" $ nf (logAgmA (-40)) (Approx 3 0 (-1))
-    , bench "400B" $ nf (logBinarySplittingA 400) (Approx 3 0 (-1))
-    , bench "400T" $ nf (logTaylorA 400) (Approx 3 0 (-1))
-    , bench "400agm" $ nf (logAgmA (-400)) (Approx 3 0 (-1))
-    , bench "4000B" $ nf (logBinarySplittingA 4000) (Approx 3 0 (-1))
-    , bench "4000T" $ nf (logTaylorA 4000) (Approx 3 0 (-1))
-    , bench "4000agm" $ nf (logAgmA (-4000)) (Approx 3 0 (-1))
+    , bench "40B" $ nf (logBinarySplittingA 40) (Approx 10 3 0 (-1))
+    , bench "40T" $ nf (logTaylorA 40) (Approx 10 3 0 (-1))
+    , bench "40agm" $ nf (logAgmA (-40)) (Approx 10 3 0 (-1))
+    , bench "400B" $ nf (logBinarySplittingA 400) (Approx 10 3 0 (-1))
+    , bench "400T" $ nf (logTaylorA 400) (Approx 10 3 0 (-1))
+    , bench "400agm" $ nf (logAgmA (-400)) (Approx 10 3 0 (-1))
+    , bench "4000B" $ nf (logBinarySplittingA 4000) (Approx 10 3 0 (-1))
+    , bench "4000T" $ nf (logTaylorA 4000) (Approx 10 3 0 (-1))
+    , bench "4000agm" $ nf (logAgmA (-4000)) (Approx 10 3 0 (-1))
     ]
   , bgroup "exp"
     [ bench "double" $ nf exp (1 :: Double)
@@ -177,7 +177,7 @@ setupEnvPi = return . (\a -> (limitAndBound 40 a, limitAndBound 400 a, limitAndB
 threadSuite :: MVar Approx -> MVar Approx -> [Benchmark]
 threadSuite u v =
   [ bgroup "thread"
-    [ bench "communicate" $ nfIO (do putMVar u (Approx 145324626 123 (-30)); a <- takeMVar v; return a)
+    [ bench "communicate" $ nfIO (do putMVar u (Approx 30 145324626 123 (-30)); a <- takeMVar v; return a)
     ]
   ]
 
