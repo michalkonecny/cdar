@@ -19,6 +19,7 @@ module Data.CDAR.Approx (Approx(..)
                         ,mBound
                         ,mapMB
                         ,setMB
+                        ,enforceMB
                         ,approxAutoMB
                         ,approxMB
                         ,approxMB2
