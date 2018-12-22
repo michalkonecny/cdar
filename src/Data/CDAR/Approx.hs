@@ -387,13 +387,13 @@ approxMB2 mb1 mb2 m e s =
 
 enforceMB :: Approx -> Approx
 enforceMB Bottom = Bottom
-enforceMB a@(Approx b m e s)
+enforceMB a@(Approx mb m e s)
     | abs m <= 1 = a
-    | m_size <= b = a
-    | otherwise = Approx b m' e'' (s + d)
+    | m_size <= mb = a
+    | otherwise = Approx mb m' e'' (s + d)
     where
     m_size = 1+integerLog2 (abs m - 1) -- |m| <= 2^m_size
-    d = m_size - b
+    d = m_size - mb
     m' = unsafeShiftR m d -- we have: m' * 2^d <= m
     e' = 1 + (unsafeShiftR (e-1) d) -- we have: 0 <= e <= e' * 2^d
     e''| m == unsafeShiftL m' d  = e' -- no loss of information
@@ -402,7 +402,7 @@ enforceMB a@(Approx b m e s)
 
 -- |Construct a centred approximation from the end-points.
 endToApprox :: Int -> Extended Dyadic -> Extended Dyadic -> Approx
-endToApprox b (Finite l) (Finite u)
+endToApprox mb (Finite l) (Finite u)
   | u < l = Bottom -- Might be better with a signalling error.
   | otherwise =
     let a@(m:^s) = scale (l + u) (-1)
@@ -410,7 +410,7 @@ endToApprox b (Finite l) (Finite u)
         r        = min s t
         m'       = unsafeShiftL m (s-r)
         n'       = unsafeShiftL n (t-r)
-    in (Approx b m' n' r)
+    in (approxMB mb m' n' r)
 endToApprox _ _ _ = Bottom
 
 -- Interval operations
@@ -427,12 +427,12 @@ upperBound Bottom = PosInf
 -- |Gives the lower bound of an 'Approx' as an exact 'Approx'.
 lowerA :: Approx -> Approx
 lowerA Bottom = Bottom
-lowerA (Approx b m e s) = Approx b (m-e) 0 s
+lowerA (Approx mb m e s) = Approx mb (m-e) 0 s
 
 -- |Gives the upper bound of an 'Approx' as an exact 'Approx'.
 upperA :: Approx -> Approx
 upperA Bottom = Bottom
-upperA (Approx b m e s) = Approx b (m+e) 0 s
+upperA (Approx mb m e s) = Approx mb (m+e) 0 s
 
 -- |Gives the mid-point of an approximation as a 'Maybe' 'Dyadic' number.
 centre :: Approx -> Maybe Dyadic
@@ -442,7 +442,7 @@ centre _ = Nothing
 -- |Gives the centre of an 'Approx' as an exact 'Approx'.
 centreA :: Approx -> Approx
 centreA Bottom = Bottom
-centreA (Approx b m _e s) = Approx b m 0 s
+centreA (Approx mb m _e s) = Approx mb m 0 s
 
 -- |Gives the radius of an approximation as a 'Dyadic' number. Currently a
 -- partial function. Should be made to return an 'Extended' 'Dyadic'.
