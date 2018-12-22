@@ -621,6 +621,7 @@ divModA _ _ = (Bottom, Bottom)
 -- |Not a proper Ord type as Approx are intervals.
 instance Ord Approx where
     compare (Approx _ m e s) (Approx _ n f t)
+        | e == 0 && f == 0 = compare (m:^s) (n:^t)
         | abs ((m:^s)-(n:^t)) > (e:^s)+(f:^t) = compare (m:^s) (n:^t)
         | otherwise                           = error "compare: comparisons are partial on Approx"
     compare _ _ = error "compare: comparisons are partial on Approx"
