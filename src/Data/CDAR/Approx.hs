@@ -1077,11 +1077,12 @@ expTaylorA' res (Approx mb m e s) =
       -- r' chosen so that a' below is smaller than 1/2
       r' = floor . sqrt . fromIntegral . max 5 $ res
       r = max 0 $ s' + r'
+      mb' = mb `max` (res + r)
       -- a' is a scaled by 2^k so that 2^(-r') <= a' < 2^(-r'+1)
-      a' = (Approx (mb `max` (res + r)) m e (s-r))
+      a' = (Approx mb' m e (s-r))
       t = taylorA
             (res + r)
-            (map (recipA (res+r)) fac)
+            (map (recipA (res+r) . enforceMB . setMB mb') fac)
             a'
   in (!! r) . iterate (boundErrorTerm . sqrA) $ t
    
