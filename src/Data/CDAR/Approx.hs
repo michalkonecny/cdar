@@ -1072,7 +1072,7 @@ expTaylorA res (Approx mb m e s) =
 -- | Exponential by summation of Taylor series.
 expTaylorA' :: Precision -> Approx -> Approx
 expTaylorA' _ Bottom = Bottom
-expTaylorA' res a | a < 0 =
+expTaylorA' res a | upperA a < 0 =
     recipA res $ expTaylorA' res (-a)
 expTaylorA' res (Approx mb m e s) =
   let s' = s + integerLog2 m
@@ -1107,6 +1107,7 @@ logA :: Precision -> Approx -> Approx
 -- interval x is bounded by 1/x to get a tighter bound on the error.
 logA _ Bottom = Bottom
 logA p x@(Approx _ m e _)
+  | m > e && upperA x < 1 = -(logA p (recipA p x))
   | m > e = logInternal p x
 --    let (n :^ t) = logD (negate p) $ (m-e) :^ s
 --        (n' :^ t') = logD (negate p) $ (m+e) :^ s
