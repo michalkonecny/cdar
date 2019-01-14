@@ -569,10 +569,14 @@ recipA _ Bottom = Bottom
 recipA t (Approx mb m e s)
     | e == 0 && m /= 0
                   = let s' = integerLog2 (abs m)
-                    in Approx (mb `max` t+2)
-                         (round (bit (s'+t+2) % m))
-                         1
-                         (-s-s'-t-2)
+                    in if abs m == bit s'
+                       then
+                            Approx (mb `max` t+2) ((signum m) * (bit (t+2))) 0 (-s-s'-t-2)
+                       else
+                            Approx (mb `max` t+2)
+                            (round (bit (s'+t+2) % m))
+                            1
+                            (-s-s'-t-2)
     | (abs m) > e = let d = m*m-e*e
                         d2 = unsafeShiftR d 1
                         s' = integerLog2 d + 2 * errorBits
