@@ -370,7 +370,7 @@ approxAutoMB m e s = Approx mb m e s
        | otherwise = 1 + integerLog2 (abs m - 1)
 
 mapMB :: (Int -> Int) -> Approx -> Approx
-mapMB f (Approx mb m e s) = Approx (f mb) m e s
+mapMB f (Approx mb m e s) = approxMB (f mb) m e s
 mapMB _f Bottom = Bottom
 
 setMB :: Int -> Approx -> Approx
@@ -388,8 +388,8 @@ approxMB2 mb1 mb2 m e s =
 enforceMB :: Approx -> Approx
 enforceMB Bottom = Bottom
 enforceMB a@(Approx mb m e s)
-    | abs m <= 1 = a
     | m_size <= mb = a
+    | abs m <= 1 = a
     | otherwise = Approx mb m' e'' (s + d)
     where
     m_size = 1+integerLog2 (abs m - 1) -- |m| <= 2^m_size
@@ -982,7 +982,7 @@ at least 2.
 taylor :: Precision -> [Approx] -> [Integer] -> Approx
 taylor res as qs =
   let res' = res + errorBits
-      f a q = limitAndBound res' $ a * recipA (fromIntegral q)
+      f a q = limitAndBound res' $ a * recipA (setMB (mBound a) $ fromIntegral q)
       mb = zipWith f as qs
       (cs,(d:_)) = span nonZeroCentredA mb -- This span and the sum on the next line do probably not fuse!
   in fudge (sum cs) d
@@ -1079,21 +1079,24 @@ expTaylorA res (Approx mb m e s) =
 -- | Exponential by summation of Taylor series.
 expTaylorA' :: Precision -> Approx -> Approx
 expTaylorA' _ Bottom = Bottom
-expTaylorA' res a | upperA a < 0 =
-    recipA $ expTaylorA' res (-a)
-expTaylorA' res (Approx mb m e s) =
-  let s' = s + integerLog2 m
-      -- r' chosen so that a' below is smaller than 1/2
-      r' = floor . sqrt . fromIntegral . max 5 $ res
-      r = max 0 $ s' + r'
-      mb' = mb `max` (res + r)
-      -- a' is a scaled by 2^k so that 2^(-r') <= a' < 2^(-r'+1)
-      a' = (Approx mb' m e (s-r))
-      t = taylorA
-            (res + r)
-            (map (recipA . enforceMB . setMB mb') fac)
-            a'
-  in (!! r) . iterate (boundErrorTerm . sqrA) $ t
+expTaylorA' res a 
+    | upperA a < 0 = recipA $ aux (-a)
+    | otherwise = aux a
+    where
+    aux Bottom = Bottom
+    aux (Approx mb m e s) =
+        let s' = s + integerLog2 m
+            -- r' chosen so that a' below is smaller than 1/2
+            r' = floor . sqrt . fromIntegral . max 5 $ res
+            r = max 0 $ s' + r'
+            mb' = mb `max` (res + r)
+            -- a' is a scaled by 2^k so that 2^(-r') <= a' < 2^(-r'+1)
+            a' = (Approx mb' m e (s-r))
+            t = taylorA
+                    (res + r)
+                    (map (recipA . setMB mb') fac)
+                    a'
+        in (!! r) . iterate (boundErrorTerm . sqrA) $ t
    
 {- Logarithms computed by ln x = 2*atanh ((x-1)/(x+1)) after range reduction.
 -}
@@ -1114,7 +1117,7 @@ logA :: Precision -> Approx -> Approx
 -- interval x is bounded by 1/x to get a tighter bound on the error.
 logA _ Bottom = Bottom
 logA p x@(Approx _ m e _)
-  | m > e && upperA x < 1 = -(logA p (recipA x))
+  | m > e && upperA x < 1 = -(logInternal p (recipA x))
   | m > e = logInternal p x
 --    let (n :^ t) = logD (negate p) $ (m-e) :^ s
 --        (n' :^ t') = logD (negate p) $ (m+e) :^ s
@@ -1153,7 +1156,7 @@ logBinarySplittingA res a@(Approx mb m e s) =
                                 (v:repeat v2)
                                 0
                                 n
-            nextTerm = recipA 5 ^^ (2*n+1)
+            nextTerm = recipA (setMB (mb+res) 5) ^^ (2*n+1)
         in boundErrorTerm $ fudge (t * recipA (fromIntegral b*q) + fromIntegral r * log2A (-res)) nextTerm
 
 -- | Logarithm by summation of Taylor series.
@@ -1192,11 +1195,11 @@ sinTaylorRed1A res a =
 -- | Second level of range reduction for sine.
 sinTaylorRed2A :: Precision -> Approx -> Approx
 sinTaylorRed2A _ Bottom = Bottom
-sinTaylorRed2A res a@(Approx _ m _ s) = 
+sinTaylorRed2A res a@(Approx mb m _ s) = 
   let k = max 0 (integerLog2 m + s + (floor . sqrt $ fromIntegral res))
-      a' = a * recipA 3^k
+      a' = a * recipA (setMB mb $ 3^k)
       a2 = negate $ sqrA a'
-      t = taylorA res (map recipA oddFac) a2
+      t = taylorA res (map (recipA . setMB mb) oddFac) a2
       step x = boundErrorTerm $ x * (3 - 4 * sqrA x)
   in limitAndBound res . (!! k) . iterate step . boundErrorTerm $ t * a'
 
@@ -1290,12 +1293,12 @@ atanBinarySplittingA res a =
 
 atanTaylorA :: Precision -> Approx -> Approx
 atanTaylorA _ Bottom = Bottom
-atanTaylorA res a =
+atanTaylorA res a@(Approx mb _ _ _) =
   let (Finite r) = min (pure res) (significance a)
       k = min (floor (sqrt (fromIntegral r)) `div` 2) 2
-      res' = res + k + 5
+      res' = (mb `max` res) + k + 5
       rr _x = _x * recipA (1 + sqrtA res' (1 + sqrA _x))
-      x = boundErrorTerm $ iterate rr (mapMB (const res') a) !! k
+      x = boundErrorTerm $ iterate rr (setMB res' a) !! k
       x2 = negate (sqrA x)
       t = boundErrorTerm $ x * taylorA res' (map (recipA . setMB res') [1,3..]) x2
   in scale t k
@@ -1374,7 +1377,7 @@ piRaw = unfoldr f (1, (1, 1, 1, 13591409))
             let i2 = i*2
                 (pr, qr, br, tr) = abpq as bs ps qs i i2
                 n = 21+47*(i-1)
-                x = fromIntegral tl * recipA (fromIntegral (bl*ql))
+                x = fromIntegral tl * recipA (setMB n $ fromIntegral (bl*ql))
                 x1 = fudge x $ fromDyadicMB (mBound x) (1:^(-n))
                 x2 = boundErrorTerm $ sqrtA n 1823176476672000 * recipA x1
             in Just ( x2
@@ -1598,16 +1601,31 @@ resources = ZipList $ iterate bumpLimit startLimit
 -- instance Show CR where
 --     show = show . require 40
 
+op2withResource ::
+    (Approx -> Approx -> Approx) -> 
+    (Approx -> Approx) -> 
+    (Approx -> Approx -> Precision -> Approx)
+op2withResource op2 post a b l =
+    post $ limitAndBound l (op2 a (enforceMB $ mapMB (max l) b))
+
+op1withResource ::
+    (Approx -> Approx) -> 
+    (Approx -> Approx) -> 
+    (Approx -> Precision -> Approx)
+op1withResource op1 post a l =
+    post $ (op1 (enforceMB $ mapMB (max l) a))
+
 instance Num CR where
-    (CR x) + (CR y) = CR $ (\a b l -> ok 10 $ limitAndBound l (a + (mapMB (max l) b))) <$> x <*> y <*> resources
-    (CR x) * (CR y) = CR $ (\a b l -> ok 10 $ limitAndBound l (a * (mapMB (max l) b))) <$> x <*> y <*> resources
+    (CR x) + (CR y) = CR $ op2withResource (+) (ok 10) <$> x <*> y <*> resources
+    (CR x) * (CR y) = CR $ op2withResource (*) (ok 10) <$> x <*> y <*> resources
     negate (CR x) = CR $ negate <$> x
     abs (CR x) = CR $ abs <$> x
     signum (CR x) = CR $ signum <$> x
-    fromInteger n = CR $ pure (fromInteger n)
+    fromInteger n = 
+        CR $ (\ a l -> ok 10 $ enforceMB $ setMB l a) <$> pure (fromInteger n) <*> resources
 
 instance Fractional CR where
-    recip (CR x) = CR $ (\ r a -> recipA (setMB r a)) <$> resources <*> x
+    recip (CR x) = CR $ op1withResource recipA id <$> x <*> resources
     fromRational x = CR $ toApprox <$> resources <*> pure x
 
 instance Eq CR where
