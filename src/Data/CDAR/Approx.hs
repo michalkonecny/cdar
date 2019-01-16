@@ -558,25 +558,28 @@ toApprox t r = approxAutoMB m e (-t - 1)
 -- |Not a proper Fractional type as Approx are intervals.
 instance Fractional Approx where
     fromRational = toApprox defaultPrecision
-    recip = recipA defaultPrecision
+    recip = recipA
+    a1 / a2 = a1 * (recipA $ setMB mb a2)
+        where
+        mb = mBound a1 `max` mBound a2
 
 -- |Compute the reciprocal of an approximation. The number of bits after the
--- binary point is bounded by the 'Precision' argument if the input is exact.
+-- binary point is bounded by the 'midpoint bound' if the input is exact.
 -- Otherwise, a good approximation with essentially the same significance as
 -- the input will be computed.
-recipA :: Precision -> Approx -> Approx
-recipA _ Bottom = Bottom
-recipA t (Approx mb m e s)
+recipA :: Approx -> Approx
+recipA Bottom = Bottom
+recipA (Approx mb m e s)
     | e == 0 && m /= 0
                   = let s' = integerLog2 (abs m)
                     in if abs m == bit s'
                        then
-                            Approx (mb `max` t+2) ((signum m) * (bit (t+2))) 0 (-s-s'-t-2)
+                            Approx mb (signum m) 0 (-s-s')
                        else
-                            Approx (mb `max` t+2)
-                            (round (bit (s'+t+2) % m))
+                            Approx mb
+                            (round (bit (mb+s') % m))
                             1
-                            (-s-s'-t-2)
+                            (-mb-s-s')
     | (abs m) > e = let d = m*m-e*e
                         d2 = unsafeShiftR d 1
                         s' = integerLog2 d + 2 * errorBits
@@ -979,7 +982,7 @@ at least 2.
 taylor :: Precision -> [Approx] -> [Integer] -> Approx
 taylor res as qs =
   let res' = res + errorBits
-      f a q = limitAndBound res' $ a * recipA res' (fromIntegral q)
+      f a q = limitAndBound res' $ a * recipA (fromIntegral q)
       mb = zipWith f as qs
       (cs,(d:_)) = span nonZeroCentredA mb -- This span and the sum on the next line do probably not fuse!
   in fudge (sum cs) d
@@ -1053,8 +1056,8 @@ expBinarySplittingA res a@(Approx mb m e s) =
                           (map (setMB mb') $ 1:[1..])
                           0
                           n
-      nextTerm = a * p * recipA (res+r) (fromIntegral n * q)
-      ss = iterate (boundErrorTerm . sqrA) $ fudge (t * recipA (res+r) (fromIntegral b*q)) nextTerm
+      nextTerm = a * p * recipA (fromIntegral n * q)
+      ss = iterate (boundErrorTerm . sqrA) $ fudge (t * recipA (fromIntegral b*q)) nextTerm
   in ss !! r
 
 -- | Exponential by summation of Taylor series.
@@ -1077,7 +1080,7 @@ expTaylorA res (Approx mb m e s) =
 expTaylorA' :: Precision -> Approx -> Approx
 expTaylorA' _ Bottom = Bottom
 expTaylorA' res a | upperA a < 0 =
-    recipA res $ expTaylorA' res (-a)
+    recipA $ expTaylorA' res (-a)
 expTaylorA' res (Approx mb m e s) =
   let s' = s + integerLog2 m
       -- r' chosen so that a' below is smaller than 1/2
@@ -1088,7 +1091,7 @@ expTaylorA' res (Approx mb m e s) =
       a' = (Approx mb' m e (s-r))
       t = taylorA
             (res + r)
-            (map (recipA (res+r) . enforceMB . setMB mb') fac)
+            (map (recipA . enforceMB . setMB mb') fac)
             a'
   in (!! r) . iterate (boundErrorTerm . sqrA) $ t
    
@@ -1111,7 +1114,7 @@ logA :: Precision -> Approx -> Approx
 -- interval x is bounded by 1/x to get a tighter bound on the error.
 logA _ Bottom = Bottom
 logA p x@(Approx _ m e _)
-  | m > e && upperA x < 1 = -(logA p (recipA p x))
+  | m > e && upperA x < 1 = -(logA p (recipA x))
   | m > e = logInternal p x
 --    let (n :^ t) = logD (negate p) $ (m-e) :^ s
 --        (n' :^ t') = logD (negate p) $ (m+e) :^ s
@@ -1150,8 +1153,8 @@ logBinarySplittingA res a@(Approx mb m e s) =
                                 (v:repeat v2)
                                 0
                                 n
-            nextTerm = recipA (res') 5 ^^ (2*n+1)
-        in boundErrorTerm $ fudge (t * recipA res (fromIntegral b*q) + fromIntegral r * log2A (-res)) nextTerm
+            nextTerm = recipA 5 ^^ (2*n+1)
+        in boundErrorTerm $ fudge (t * recipA (fromIntegral b*q) + fromIntegral r * log2A (-res)) nextTerm
 
 -- | Logarithm by summation of Taylor series.
 logTaylorA :: Precision -> Approx -> Approx
@@ -1164,7 +1167,7 @@ logTaylorA res (Approx mb m e s) =
             a' = approxMB mb m e (s-r)  -- a' is a scaled by a power of 2 so that 2/3 <= a' <= 4/3
             u = a' - 1
             v = a' + 1
-            x = u * recipA (res') v  -- so |u/v| <= 1/5
+            x = u * recipA v  -- so |u/v| <= 1/5
             x2 = boundErrorTerm $ sqrA x
             t = taylor
                   res'
@@ -1191,9 +1194,9 @@ sinTaylorRed2A :: Precision -> Approx -> Approx
 sinTaylorRed2A _ Bottom = Bottom
 sinTaylorRed2A res a@(Approx _ m _ s) = 
   let k = max 0 (integerLog2 m + s + (floor . sqrt $ fromIntegral res))
-      a' = a * recipA res 3^k
+      a' = a * recipA 3^k
       a2 = negate $ sqrA a'
-      t = taylorA res (map (recipA res) oddFac) a2
+      t = taylorA res (map recipA oddFac) a2
       step x = boundErrorTerm $ x * (3 - 4 * sqrA x)
   in limitAndBound res . (!! k) . iterate step . boundErrorTerm $ t * a'
 
@@ -1212,7 +1215,7 @@ sinBinarySplittingA :: Precision -> Approx -> Approx
 sinBinarySplittingA _ Bottom = Bottom
 sinBinarySplittingA res a =
     let _pi = piBorweinA res
-        (Approx mb' m' e' s') = 4 * a * recipA res _pi
+        (Approx mb' m' e' s') = 4 * a * recipA _pi
         (k,m1) = m' `divMod` bit (-s')
         a2 = _pi * fromDyadicMB mb' (1:^(-2)) * (Approx mb' m1 e' s')
     in case k `mod` 8 of
@@ -1233,7 +1236,7 @@ cosBinarySplittingA :: Precision -> Approx -> Approx
 cosBinarySplittingA _ Bottom = Bottom
 cosBinarySplittingA res a =
     let _pi = piBorweinA res
-        (Approx mb' m' e' s') = 4 * a * recipA res _pi
+        (Approx mb' m' e' s') = 4 * a * recipA _pi
         (k,m1) = m' `divMod` bit (-s')
         a2 = _pi * fromDyadicMB mb' (1:^(-2)) * (Approx mb' m1 e' s')
     in case k `mod` 8 of
@@ -1256,7 +1259,7 @@ atanA = atanTaylorA
 atanBinarySplittingA :: Precision -> Approx -> Approx
 atanBinarySplittingA _ Bottom = Bottom
 atanBinarySplittingA res a =
-  let rr x = x * recipA res (1 + sqrtA res (1 + sqrA x))
+  let rr x = x * recipA (1 + sqrtA res (1 + sqrA x))
       a' = rr . rr . rr $ a -- range reduction so that |a'| < 1/4
       a2 = - sqrA a'
       res' = case (significance a) of
@@ -1271,7 +1274,7 @@ atanBinarySplittingA res a =
                           0
                           n
       nextTerm = Approx (mBound a + res) 1 0 (-2*n)
-  in boundErrorTerm . (8*) $ fudge (t * recipA res (fromIntegral b*q)) nextTerm
+  in boundErrorTerm . (8*) $ fudge (t * recipA (fromIntegral b*q)) nextTerm
 
 -- + Bottom
 -- + Deal with sign -- Because of next line, not worthwhile
@@ -1291,10 +1294,10 @@ atanTaylorA res a =
   let (Finite r) = min (pure res) (significance a)
       k = min (floor (sqrt (fromIntegral r)) `div` 2) 2
       res' = res + k + 5
-      rr _x = _x * recipA res' (1 + sqrtA res' (1 + sqrA _x))
+      rr _x = _x * recipA (1 + sqrtA res' (1 + sqrA _x))
       x = boundErrorTerm $ iterate rr (mapMB (const res') a) !! k
       x2 = negate (sqrA x)
-      t = boundErrorTerm $ x * taylorA res' (map (recipA res') [1,3..]) x2
+      t = boundErrorTerm $ x * taylorA res' (map (recipA . setMB res') [1,3..]) x2
   in scale t k
 
 -- > let x = fromDouble (-0.2939788524332769)
@@ -1341,7 +1344,7 @@ sinInRangeA res a =
                             0
                             n
         nextTerm = fromDyadicMB (mBound a + res) (1:^(-res))
-    in boundErrorTerm $ fudge (t * recipA res (fromIntegral b*q)) nextTerm
+    in boundErrorTerm $ fudge (t * recipA (fromIntegral b*q)) nextTerm
 
 -- Computes cosine if second argument is in the range [0,pi/4]
 cosInRangeA :: Precision -> Approx -> Approx
@@ -1355,7 +1358,7 @@ cosInRangeA res a =
                             0
                             n
         nextTerm = fromDyadicMB (mBound a + res) (1:^(-res))
-    in boundErrorTerm $ fudge (t * recipA res (fromIntegral b*q)) nextTerm
+    in boundErrorTerm $ fudge (t * recipA (fromIntegral b*q)) nextTerm
 
 {-|
 Computes a sequence of approximations of π using binary splitting summation of
@@ -1371,9 +1374,9 @@ piRaw = unfoldr f (1, (1, 1, 1, 13591409))
             let i2 = i*2
                 (pr, qr, br, tr) = abpq as bs ps qs i i2
                 n = 21+47*(i-1)
-                x = fromIntegral tl * recipA n (fromIntegral (bl*ql))
+                x = fromIntegral tl * recipA (fromIntegral (bl*ql))
                 x1 = fudge x $ fromDyadicMB (mBound x) (1:^(-n))
-                x2 = boundErrorTerm $ sqrtA n 1823176476672000 * recipA n x1
+                x2 = boundErrorTerm $ sqrtA n 1823176476672000 * recipA x1
             in Just ( x2
                     , (i2, (pl * pr, ql * qr, bl * br, fromIntegral br * qr * tl + fromIntegral bl * pl * tr))
                     )
@@ -1414,9 +1417,9 @@ piAgmA t x_@(Approx mb_ _ _ _) =
                  mb = mb_ + t
                  a = setMB mb 1
                  x = setMB mb x_
-                 b = boundErrorTerm $ (2*x*recipA (-t') (x^2-1))^2
+                 b = boundErrorTerm $ (2*x*recipA (x^2-1))^2
                  ss = agmA t a b
-                 c = boundErrorTerm . (1-) . (*recipA (-t') (1-b^2)) . agm2 . agm1 $ ss
+                 c = boundErrorTerm . (1-) . (*recipA (1-b^2)) . agm2 . agm1 $ ss
                  d = sqrtA (-t') (1+b)
                  b2 = b^2
                  b3 = b2*b
@@ -1451,10 +1454,10 @@ lnSuperSizeUnknownPi t x_@(Approx mb_ _ _ _) =
         mb = mb_ + t
         a = setMB mb 1
         x = setMB mb x_
-        b = boundErrorTerm $ (2*x*recipA (-t') (x^2-1))^2
+        b = boundErrorTerm $ (2*x*recipA (x^2-1))^2
         ss = agmA t a b
         (an,bn) = last ss
-        c = boundErrorTerm . (1-) . (*recipA (-t') (1-b^2)) . agm2 . agm1 $ ss
+        c = boundErrorTerm . (1-) . (*recipA (1-b^2)) . agm2 . agm1 $ ss
         d = sqrtA (-t') (1+b)
         b2 = b^2
         b3 = b2*b
@@ -1483,7 +1486,7 @@ lnSuperSizeKnownPi t _pi x_@(Approx mb_ _ _ _) =
         mb = mb_ + t
         a = setMB mb 1
         x = setMB mb x_
-        b = boundErrorTerm $ (2*x*recipA (-t') (x^2-1))^2
+        b = boundErrorTerm $ (2*x*recipA (x^2-1))^2
         b2 = b^2
         b3 = b2*b
         b4 = b2^2
@@ -1492,7 +1495,7 @@ lnSuperSizeKnownPi t _pi x_@(Approx mb_ _ _ _) =
                        ,boundErrorTerm $ sqrtA (-t') (_a*_b))
         close (_a,_b) = approximatedBy 0 $ _a-_b
         ((an,bn):_) = dropWhile (not . close) $ iterate step (a,b)
-        i = boundErrorTerm $ unionA (_pi*recipA (-t') (2*an)) (_pi*recipA (-t') (2*bn))
+        i = boundErrorTerm $ unionA (_pi*recipA (2*an)) (_pi*recipA (2*bn))
         l = (i + ((Approx mb 1 0 (-1))*b-(Approx mb 3 0 (-4))*b2+(Approx mb 9 0 (-5))*b3)*b1sqrt)
             / (2 + (Approx mb 1 0 (-1))*b2 + (Approx mb 9 0 (-5))*b4)
         u = (i + (Approx mb 1 0 (-1))*b*b1sqrt) / (2 + (Approx mb 1 0 (-1))*b2)
@@ -1558,10 +1561,10 @@ agmLn t x_@(Approx mb_ _ _ _) =
                 mb = mb_ + t
                 a = setMB mb 1
                 x = setMB mb x_
-                b = boundErrorTerm $ (2*x*recipA (-t') (x^2-1))^2
+                b = boundErrorTerm $ (2*x*recipA (x^2-1))^2
                 ss = agmA t a b
                 -- (an,bn) = last ss
-                c = boundErrorTerm . (1-) . (*recipA (-t') (1-b^2)) . agm2 . agm1 $ ss
+                c = boundErrorTerm . (1-) . (*recipA (1-b^2)) . agm2 . agm1 $ ss
                 d = sqrtA (-t') (1+b)
                 b2 = b^2
                 b3 = b2*b
@@ -1604,7 +1607,7 @@ instance Num CR where
     fromInteger n = CR $ pure (fromInteger n)
 
 instance Fractional CR where
-    recip (CR x) = CR $ recipA <$> resources <*> x
+    recip (CR x) = CR $ (\ r a -> recipA (setMB r a)) <$> resources <*> x
     fromRational x = CR $ toApprox <$> resources <*> pure x
 
 instance Eq CR where
