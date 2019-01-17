@@ -690,7 +690,7 @@ This function will map a converging sequence to a converging sequence.
 -}
 boundErrorTerm :: Approx -> Approx
 boundErrorTerm Bottom = Bottom
-boundErrorTerm a@(Approx b m e s)
+boundErrorTerm a@(Approx mb m e s)
     | e < errorBound = a
     | otherwise =
         let k = integerLog2 e + 1 - errorBits
@@ -699,8 +699,22 @@ boundErrorTerm a@(Approx b m e s)
             -- may overflow and use errorBits+1
             e' = unsafeShiftR (e + bit (k-1)) k + 1
         in if t
-           then Approx b (m'+1) e' (s+k)
-           else Approx b m'     e' (s+k)
+           then Approx mb (m'+1) e' (s+k)
+           else Approx mb m'     e' (s+k)
+
+boundErrorTermMB :: Approx -> Approx
+boundErrorTermMB Bottom = Bottom
+boundErrorTermMB a@(Approx mb m e s)
+    | e < errorBound = a
+    | otherwise =
+        let k = integerLog2 e + 1 - errorBits
+            t = testBit m (k-1)
+            m' = unsafeShiftR m k
+            -- may overflow and use errorBits+1
+            e' = unsafeShiftR (e + bit (k-1)) k + 1
+        in if t
+           then Approx (mb-k) (m'+1) e' (s+k)
+           else Approx (mb-k) m'     e' (s+k)
 
 {-|
 Limits the size of an approximation by restricting how much precision an
@@ -728,7 +742,7 @@ converging sequence.
 limitSize :: Precision -> Approx -> Approx
 limitSize _ Bottom = Bottom
 limitSize l a@(Approx mb m e s)
-    | k > 0     = Approx mb
+    | k > 0     = Approx (mb-k)
                   ((if testBit m (k-1) then (+1) else id) (unsafeShiftR m k))
                   (1 + (unsafeShiftR (e + bit (k-1)) k))
                   (-l)
@@ -1195,13 +1209,13 @@ sinTaylorRed1A res a =
 -- | Second level of range reduction for sine.
 sinTaylorRed2A :: Precision -> Approx -> Approx
 sinTaylorRed2A _ Bottom = Bottom
-sinTaylorRed2A res a@(Approx mb m _ s) = 
-  let k = max 0 (integerLog2 m + s + (floor . sqrt $ fromIntegral res))
+sinTaylorRed2A _res a@(Approx mb m _ s) = 
+  let k = max 0 (integerLog2 m + s + (floor . sqrt $ fromIntegral mb))
       a' = a * recipA (setMB mb $ 3^k)
       a2 = negate $ sqrA a'
-      t = taylorA res (map (recipA . setMB mb) oddFac) a2
+      t = taylorA mb (map (recipA . setMB mb) oddFac) a2
       step x = boundErrorTerm $ x * (3 - 4 * sqrA x)
-  in limitAndBound res . (!! k) . iterate step . boundErrorTerm $ t * a'
+  in (!! k) . iterate step . boundErrorTerm $ t * a'
 
 -- | Computes the sine of an approximation. Chooses the best implementation.
 sinA :: Precision -> Approx -> Approx
@@ -1378,8 +1392,8 @@ piRaw = unfoldr f (1, (1, 1, 1, 13591409))
                 (pr, qr, br, tr) = abpq as bs ps qs i i2
                 n = 21+47*(i-1)
                 x = fromIntegral tl * recipA (setMB n $ fromIntegral (bl*ql))
-                x1 = fudge x $ fromDyadicMB (mBound x) (1:^(-n))
-                x2 = boundErrorTerm $ sqrtA n 1823176476672000 * recipA x1
+                x1 = fudge x $ fromDyadicMB n (1:^(-n))
+                x2 = setMB n $ boundErrorTermMB $ sqrtA n 1823176476672000 * recipA x1
             in Just ( x2
                     , (i2, (pl * pr, ql * qr, bl * br, fromIntegral br * qr * tl + fromIntegral bl * pl * tr))
                     )
