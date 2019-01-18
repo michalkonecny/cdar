@@ -549,7 +549,7 @@ instance Num Approx where
         | abs m == e = Approx 64 (signum m) 1 (-1)
         | otherwise = Approx 64 (signum m) 0 0
     signum Bottom = Approx 64 0 1 0
-    fromInteger i = mapMB (\mb -> 64 + 10*mb) $ approxAutoMB i 0 0
+    fromInteger i = mapMB (max 64) $ approxAutoMB i 0 0
 
 -- |Convert a rational number into an approximation of that number with
 -- 'Precision' bits correct after the binary point.
