@@ -1099,7 +1099,7 @@ expTaylorA res (Approx mb m e s) =
             (res + r)
             (iterate (a'*) 1)
             (scanl1 (*) $ 1:[1..])
-  in (!! r) . iterate (boundErrorTerm . sqrA) $ t
+  in (!! r) . iterate (boundErrorTermMB . sqrA) $ t
    
 -- | Exponential by summation of Taylor series.
 expTaylorA' :: Precision -> Approx -> Approx
@@ -1121,7 +1121,7 @@ expTaylorA' res a
                     (res + r)
                     (map (recipA . setMB mb') fac)
                     a'
-        in (!! r) . iterate (boundErrorTerm . sqrA) $ t
+        in (!! r) . iterate (boundErrorTermMB . sqrA) $ t
    
 {- Logarithms computed by ln x = 2*atanh ((x-1)/(x+1)) after range reduction.
 -}
