@@ -250,6 +250,13 @@ errorBits = 10
 errorBound :: Integer
 errorBound = 2^errorBits
 
+errorBitsMB :: Int
+errorBitsMB = 1
+
+errorBoundMB :: Integer
+errorBoundMB = 2^errorBitsMB
+
+
 -- |The default cutoff for diverging computations. May well be chosen much
 -- smaller. 31 corresponds to about 10 decimal places.
 defaultPrecision :: Precision
@@ -704,17 +711,17 @@ boundErrorTerm a@(Approx mb m e s)
 
 boundErrorTermMB :: Approx -> Approx
 boundErrorTermMB Bottom = Bottom
-boundErrorTermMB a@(Approx mb m e s)
-    | e < errorBound = a
+boundErrorTermMB a@(Approx _ m e s)
+    | e < errorBoundMB = a
     | otherwise =
-        let k = integerLog2 e + 1 - errorBits
+        let k = integerLog2 e + 1 - errorBitsMB
             t = testBit m (k-1)
             m' = unsafeShiftR m k
             -- may overflow and use errorBits+1
             e' = unsafeShiftR (e + bit (k-1)) k + 1
         in if t
-           then Approx (mb-k) (m'+1) e' (s+k)
-           else Approx (mb-k) m'     e' (s+k)
+           then approxAutoMB (m'+1) e' (s+k)
+           else approxAutoMB m'     e' (s+k)
 
 {-|
 Limits the size of an approximation by restricting how much precision an
@@ -1393,7 +1400,7 @@ piRaw = unfoldr f (1, (1, 1, 1, 13591409))
                 n = 21+47*(i-1)
                 x = fromIntegral tl * recipA (setMB n $ fromIntegral (bl*ql))
                 x1 = fudge x $ fromDyadicMB n (1:^(-n))
-                x2 = setMB n $ boundErrorTermMB $ sqrtA n 1823176476672000 * recipA x1
+                x2 = boundErrorTermMB $ sqrtA n 1823176476672000 * recipA x1
             in Just ( x2
                     , (i2, (pl * pr, ql * qr, bl * br, fromIntegral br * qr * tl + fromIntegral bl * pl * tr))
                     )
