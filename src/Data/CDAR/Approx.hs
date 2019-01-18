@@ -770,6 +770,10 @@ limitAndBound :: Precision -> Approx -> Approx
 limitAndBound limit =
     limitSize limit . boundErrorTerm
 
+limitAndBoundMB :: Precision -> Approx -> Approx
+limitAndBoundMB limit =
+    limitSize limit . boundErrorTermMB
+
 -- | Find the hull of two approximations.
 unionA :: Approx -> Approx -> Approx
 unionA Bottom _ = Bottom
@@ -875,7 +879,7 @@ input approximation.
 -}
 sqrtA :: Precision -> Approx -> Approx
 sqrtA _ x@(Approx _ 0 0 _) =  x
-sqrtA k x = limitAndBound k $ x * sqrtRecA k x
+sqrtA k x = limitAndBoundMB k $ x * sqrtRecA k x
 
 {-|
 This uses Newton's method for computing the reciprocal of the square root.
