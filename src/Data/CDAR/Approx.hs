@@ -373,8 +373,10 @@ mBound Bottom = error "mBound Bottom"
 approxAutoMB :: Integer -> Integer -> Int -> Approx
 approxAutoMB m e s = Approx mb m e s
     where
-    mb | abs m <= 1 = 1
-       | otherwise = 1 + integerLog2 (abs m - 1)
+    ame = (abs m) + e
+    mb | ame <= 4 = 2
+       | otherwise = 1 + integerLog2 (ame - 1)
+
 
 mapMB :: (Int -> Int) -> Approx -> Approx
 mapMB f (Approx mb m e s) = approxMB (f mb) m e s
@@ -1110,15 +1112,16 @@ expTaylorA' res a
     where
     aux Bottom = Bottom
     aux (Approx mb m e s) =
-        let s' = s + integerLog2 m
+        let s' = s + (integerLog2 m)
             -- r' chosen so that a' below is smaller than 1/2
             r' = floor . sqrt . fromIntegral . max 5 $ res
             r = max 0 $ s' + r'
-            mb' = mb `max` (res + r)
+            mb'_ = (mb `max` res) + r + (integerLog2 m)
+            mb' = (120*mb'_) `div` 100
             -- a' is a scaled by 2^k so that 2^(-r') <= a' < 2^(-r'+1)
             a' = (Approx mb' m e (s-r))
             t = taylorA
-                    (res + r)
+                    mb'
                     (map (recipA . setMB mb') fac)
                     a'
         in (!! r) . iterate (boundErrorTermMB . sqrA) $ t
