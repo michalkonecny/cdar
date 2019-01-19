@@ -46,6 +46,7 @@ module Data.CDAR.Approx (Approx(..)
                         ,precision
                         ,significance
                         ,boundErrorTerm
+                        ,boundErrorTermMB
                         ,limitSize
                         ,checkPrecisionLeft
                         ,limitAndBound
@@ -945,7 +946,7 @@ findStartingValues f = map (fromRational . toRational . (/2)) . (\l -> zipWith (
 sqrA :: Approx -> Approx
 sqrA Bottom = Bottom
 sqrA (Approx mb m e s)
-  | am > e = approxMB mb (m^(2 :: Int) + e^(2 :: Int)) (2*abs m*e) (2*s)
+  | am > e = approxMB mb (m^(2 :: Int) + e^(2 :: Int)) (2*am*e) (2*s)
   | otherwise = let m' = (am + e)^(2 :: Int) in approxMB mb m' m' (2*s-1)
   where am = abs m
 -- Binary splitting
@@ -1048,7 +1049,16 @@ the the terms to converge geometrically to 0 by a factor of at least 2.
 -}
 taylorA :: Precision -> [Approx] -> Approx -> Approx
 taylorA res as x =
-  sum . takeWhile nonZeroCentredA . map (limitAndBound res) $ zipWith (*) as (pow x)
+  fudge sm d
+  where
+  (sm, d) = sumAndNext . takeWhile (nonZeroCentredA . fst) . addNext . map (limitAndBound res) $ zipWith (*) as (pow x)
+  sumAndNext = aux 0
+    where
+    aux a [(b,dd)] = (a+b,dd)
+    aux a ((b,_):rest) = aux (a+b) rest
+    aux _ _ = undefined
+  addNext (x1:x2:xs) = (x1,x2):(addNext (x2:xs))
+  addNext _ = error "taylorA: end of initite sequence" 
 
 {- Exponential computed by standard Taylor expansion after range reduction.
 -}
@@ -1106,24 +1116,22 @@ expTaylorA res (Approx mb m e s) =
 -- | Exponential by summation of Taylor series.
 expTaylorA' :: Precision -> Approx -> Approx
 expTaylorA' _ Bottom = Bottom
-expTaylorA' res a 
+expTaylorA' _res a 
     | upperA a < 0 = recipA $ aux (-a)
     | otherwise = aux a
     where
     aux Bottom = Bottom
+    aux (Approx mb 0 0 _) = Approx mb 1 0 0
     aux (Approx mb m e s) =
         let s' = s + (integerLog2 m)
             -- r' chosen so that a' below is smaller than 1/2
-            r' = floor . sqrt . fromIntegral . max 5 $ res
+            r' = floor . sqrt . fromIntegral . max 5 $ mb
             r = max 0 $ s' + r'
-            mb'_ = (mb `max` res) + r + (integerLog2 m)
+            mb'_ = mb + r + (integerLog2 m) + 1
             mb' = (120*mb'_) `div` 100
             -- a' is a scaled by 2^k so that 2^(-r') <= a' < 2^(-r'+1)
             a' = (Approx mb' m e (s-r))
-            t = taylorA
-                    mb'
-                    (map (recipA . setMB mb') fac)
-                    a'
+            t = boundErrorTermMB $ taylorA mb' (map (recipA . setMB mb') fac) a'
         in (!! r) . iterate (boundErrorTermMB . sqrA) $ t
    
 {- Logarithms computed by ln x = 2*atanh ((x-1)/(x+1)) after range reduction.
@@ -1421,6 +1429,7 @@ Second argument is noise to be added to first argument. Used to allow for the
 error term when truncating a series.
 -}
 fudge :: Approx -> Approx -> Approx
+fudge a (Approx _ 0 0 _) = a
 fudge (Approx mb m 0 s) (Approx mb' m' e' s') =
   approxMB2 mb mb' (m `shift` (s - s')) (abs m' + e' + 1) s'
 fudge (Approx mb m e s) (Approx mb' m' e' s') =
