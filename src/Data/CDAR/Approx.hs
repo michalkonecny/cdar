@@ -880,9 +880,9 @@ computation. This is done via the precision argument.
 The resulting approximation should approximate the image of every point in the
 input approximation.
 -}
-sqrtA :: Precision -> Approx -> Approx
-sqrtA _ x@(Approx _ 0 0 _) =  x
-sqrtA k x = limitAndBoundMB k $ x * sqrtRecA k x
+sqrtA :: Approx -> Approx
+sqrtA x@(Approx mb 0 0 _) =  x
+sqrtA x = let mb = mBound x in limitAndBoundMB mb $ x * sqrtRecA mb x
 
 {-|
 This uses Newton's method for computing the reciprocal of the square root.
@@ -1298,7 +1298,7 @@ atanA = atanTaylorA
 atanBinarySplittingA :: Precision -> Approx -> Approx
 atanBinarySplittingA _ Bottom = Bottom
 atanBinarySplittingA res a =
-  let rr x = x * recipA (1 + sqrtA res (1 + sqrA x))
+  let rr x = x * recipA (1 + sqrtA (1 + sqrA x))
       a' = rr . rr . rr $ a -- range reduction so that |a'| < 1/4
       a2 = - sqrA a'
       res' = case (significance a) of
@@ -1333,7 +1333,7 @@ atanTaylorA res a@(Approx mb _ _ _) =
   let (Finite r) = min (pure res) (significance a)
       k = min (floor (sqrt (fromIntegral r)) `div` 2) 2
       res' = (mb `max` res) + k + 5
-      rr _x = _x * recipA (1 + sqrtA res' (1 + sqrA _x))
+      rr _x = _x * recipA (1 + sqrtA (1 + sqrA _x))
       x = boundErrorTerm $ iterate rr (setMB res' a) !! k
       x2 = negate (sqrA x)
       t = boundErrorTerm $ x * taylorA res' (map (recipA . setMB res') [1,3..]) x2
@@ -1415,7 +1415,7 @@ piRaw = unfoldr f (1, (1, 1, 1, 13591409))
                 n = 21+47*(i-1)
                 x = fromIntegral tl * recipA (setMB n $ fromIntegral (bl*ql))
                 x1 = fudge x $ fromDyadicMB n (1:^(-n))
-                x2 = boundErrorTermMB $ sqrtA n 1823176476672000 * recipA x1
+                x2 = boundErrorTermMB $ sqrtA (setMB n 1823176476672000) * recipA x1
             in Just ( x2
                     , (i2, (pl * pr, ql * qr, bl * br, fromIntegral br * qr * tl + fromIntegral bl * pl * tr))
                     )
@@ -1460,7 +1460,7 @@ piAgmA t x_@(Approx mb_ _ _ _) =
                  b = boundErrorTerm $ (2*x*recipA (x^2-1))^2
                  ss = agmA t a b
                  c = boundErrorTerm . (1-) . (*recipA (1-b^2)) . agm2 . agm1 $ ss
-                 d = sqrtA (-t') (1+b)
+                 d = sqrtA (1+b)
                  b2 = b^2
                  b3 = b2*b
                  b4 = b2^2
@@ -1498,7 +1498,7 @@ lnSuperSizeUnknownPi t x_@(Approx mb_ _ _ _) =
         ss = agmA t a b
         (an,bn) = last ss
         c = boundErrorTerm . (1-) . (*recipA (1-b^2)) . agm2 . agm1 $ ss
-        d = sqrtA (-t') (1+b)
+        d = sqrtA (1+b)
         b2 = b^2
         b3 = b2*b
         b4 = b2^2
@@ -1530,9 +1530,9 @@ lnSuperSizeKnownPi t _pi x_@(Approx mb_ _ _ _) =
         b2 = b^2
         b3 = b2*b
         b4 = b2^2
-        b1sqrt = sqrtA (-t') (1+b)
+        b1sqrt = sqrtA (1+b)
         step (_a,_b) = (boundErrorTerm $ Approx mb 1 0 (-1) * (_a+_b)
-                       ,boundErrorTerm $ sqrtA (-t') (_a*_b))
+                       ,boundErrorTerm $ sqrtA (_a*_b))
         close (_a,_b) = approximatedBy 0 $ _a-_b
         ((an,bn):_) = dropWhile (not . close) $ iterate step (a,b)
         i = boundErrorTerm $ unionA (_pi*recipA (2*an)) (_pi*recipA (2*bn))
@@ -1580,7 +1580,7 @@ logAgmA t x
 
 agmA :: Precision -> Approx -> Approx -> [(Approx,Approx)]
 agmA t a b = let t' = t - 5
-                 step (_a,_b) = (boundErrorTerm $ Approx t 1 0 (-1) * (a+b), boundErrorTerm $ sqrtA (-t') (_a*_b))
+                 step (_a,_b) = (boundErrorTerm $ Approx t 1 0 (-1) * (a+b), boundErrorTerm $ sqrtA (_a*_b))
                  close (_a,_b) = approximatedBy 0 $ _a-_b
              in (\(as, bs) -> as ++ take 1 bs) . break close $ iterate step (a,b)
 
@@ -1605,7 +1605,7 @@ agmLn t x_@(Approx mb_ _ _ _) =
                 ss = agmA t a b
                 -- (an,bn) = last ss
                 c = boundErrorTerm . (1-) . (*recipA (1-b^2)) . agm2 . agm1 $ ss
-                d = sqrtA (-t') (1+b)
+                d = sqrtA (1+b)
                 b2 = b^2
                 b3 = b2*b
                 b4 = b2^2
@@ -1752,7 +1752,7 @@ epsilon = CR $ Approx 10 0 1 . negate <$> resources
 -- | The square root function. Lifted from square root application on 'Approx'
 -- approximations.
 sqrtCR :: CR -> CR
-sqrtCR (CR x) = CR $ (\a l -> ok 10 . limitAndBound l $ sqrtA (-l) a) <$> x <*> resources
+sqrtCR (CR x) = CR $ op1withResource sqrtA id <$> x <*> resources
 
 alternateSign :: Num a => [a] -> [a]
 alternateSign = zipWith (*) (cycle [1,-1])
@@ -1826,7 +1826,7 @@ cosCR :: CR -> CR
 cosCR = sinCR . (halfPi -)
 
 instance Floating CR where
-  sqrt (CR x) = CR $ sqrtA <$> resources <*> x
+  sqrt (CR x) = CR $ op1withResource sqrtA id <$> x <*> resources
   pi = piBinSplitCR
   exp (CR x) = CR $ op1withResource expA id <$> x <*> resources
   log (CR x) = CR $ logA <$> resources <*> x

@@ -147,7 +147,7 @@ scPropA = testGroup "(checked by smallcheck)"
             Approx _ _ _ _ -> let b@(Approx _ _ _ s) = limitSize 2 a
                               in (a `better` b) && (s >= -2)
             Bottom         -> better a (limitSize 2 a)
-  , SC.testProperty "sqrt" $ \a -> let b = abs a in better b $ (sqrtA 0 b)^2
+  , SC.testProperty "sqrt" $ \a -> let b = abs a in better b $ (sqrtA b)^2
   , SC.testProperty "recipA" $ \a -> let b = abs a in 0 `approximatedBy` b || (lowerBound (recipA b) * upperBound b <= 1
                                                                                && upperBound (recipA b) * lowerBound b >= 1)
   ]
@@ -182,8 +182,8 @@ qcPropA = testGroup "(checked by quickcheck)"
                               in (a `better` b) && (s >= -2)
             Bottom       ->   better a (limitSize 2 a)
   , QC.testProperty "values" $ \a -> let types = a :: Approx in collect a True
-  , QC.testProperty "sqr . sqrt" $ \a -> let b = abs a in b `better` sqrA (sqrtA 0 b)
-  , QC.testProperty "sqrt . sqr" $ \a -> abs a `better` sqrtA 0 (sqrA a)
+  , QC.testProperty "sqr . sqrt" $ \a -> let b = abs a in b `better` sqrA (sqrtA b)
+  , QC.testProperty "sqrt . sqr" $ \a -> abs a `better` sqrtA (sqrA a)
   , QC.testProperty "recipA" $ \a -> let b = abs a in 0 `approximatedBy` b || (lowerBound (recipA b) * upperBound b <= 1
                                                                                && upperBound (recipA b) * lowerBound b >= 1)
   ]
