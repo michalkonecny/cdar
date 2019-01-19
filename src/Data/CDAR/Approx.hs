@@ -1071,7 +1071,7 @@ More thorough benchmarking would be desirable.
 
 Is faster for small approximations < ~2000 bits.
 -}
-expA :: Precision -> Approx -> Approx
+expA :: Approx -> Approx
 expA = expTaylorA'
 
 -- | Exponential by binary splitting summation of Taylor series.
@@ -1114,9 +1114,9 @@ expTaylorA res (Approx mb m e s) =
   in (!! r) . iterate (boundErrorTermMB . sqrA) $ t
    
 -- | Exponential by summation of Taylor series.
-expTaylorA' :: Precision -> Approx -> Approx
-expTaylorA' _ Bottom = Bottom
-expTaylorA' _res a 
+expTaylorA' :: Approx -> Approx
+expTaylorA' Bottom = Bottom
+expTaylorA' a 
     | upperA a < 0 = recipA $ aux (-a)
     | otherwise = aux a
     where
@@ -1828,7 +1828,7 @@ cosCR = sinCR . (halfPi -)
 instance Floating CR where
   sqrt (CR x) = CR $ sqrtA <$> resources <*> x
   pi = piBinSplitCR
-  exp (CR x) = CR $ expA <$> resources <*> x
+  exp (CR x) = CR $ op1withResource expA id <$> x <*> resources
   log (CR x) = CR $ logA <$> resources <*> x
   sin (CR x) = CR $ sinA <$> resources <*> x
   cos (CR x) = CR $ cosA <$> resources <*> x
