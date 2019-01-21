@@ -881,7 +881,7 @@ The resulting approximation should approximate the image of every point in the
 input approximation.
 -}
 sqrtA :: Approx -> Approx
-sqrtA x@(Approx mb 0 0 _) =  x
+sqrtA x@(Approx _ 0 0 _) =  x
 sqrtA x = let mb = mBound x in limitAndBoundMB mb $ x * sqrtRecA mb x
 
 {-|
@@ -1145,31 +1145,31 @@ More thorough benchmarking is desirable.
 
 Binary splitting is faster than Taylor. AGM should be used over ~1000 bits.
 -}
-logA :: Precision -> Approx -> Approx
+logA :: Approx -> Approx
 -- This implementation asks for the dyadic approximation of the endpoints, we
 -- should instead use that, after the first range reduction, the derivative is
 -- less than 3/2 on the interval, so it easy to just compute one expensive
 -- computation. We could even make use of the fact that the derivative on the
 -- interval x is bounded by 1/x to get a tighter bound on the error.
-logA _ Bottom = Bottom
-logA p x@(Approx _ m e _)
-  | m > e && upperA x < 1 = -(logInternal p (recipA x))
-  | m > e = logInternal p x
+logA Bottom = Bottom
+logA x@(Approx _ m e _)
+  | m > e && upperA x < 1 = -(logInternal (recipA x))
+  | m > e = logInternal x
 --    let (n :^ t) = logD (negate p) $ (m-e) :^ s
 --        (n' :^ t') = logD (negate p) $ (m+e) :^ s
 --    in endToApprox (Finite ((n-1):^t)) (Finite ((n'+1):^t'))
   | otherwise = Bottom
 
-logInternal :: Precision -> Approx -> Approx
-logInternal _ Bottom = error "LogInternal: impossible"
-logInternal p (Approx mb m e s) =
-  let t' = (negate p) - 10 - max 0 (integerLog2 m + s) -- (5 + size of argument) guard digits
+logInternal :: Approx -> Approx
+logInternal Bottom = error "LogInternal: impossible"
+logInternal (Approx mb m e s) =
+  let t' = (negate mb) - 10 - max 0 (integerLog2 m + s) -- (5 + size of argument) guard digits
       r = s + integerLog2 (3*m) - 1
       x = scale (m :^ s) (-r) -- 2/3 <= x' <= 4/3
       y = divD' t' (x - 1) (x + 1) -- so |y| <= 1/5
       (n :^ s') = flip scale 1 $ atanhD t' y
       (e' :^ s'') = divD' t' (e:^(s-r)) x -- Estimate error term.
-      res = approxMB (mb + p) n (scale (e' + 1) (s'' - s')) s'
+      res = approxMB mb n (scale (e' + 1) (s'' - s')) s'
   in boundErrorTerm $ res + fromIntegral r * log2A t'
 
 -- | Logarithm by binary splitting summation of Taylor series.
@@ -1453,7 +1453,7 @@ piBorweinA t = let (m:^s) = piBorweinD (-t) in approxAutoMB m 1 s
 -- the AGM'.
 piAgmA :: Precision -> Approx -> Approx
 piAgmA t x_@(Approx mb_ _ _ _) = 
-             let t' = t - 10
+             let -- t' = t - 10
                  mb = mb_ + t
                  a = setMB mb 1
                  x = setMB mb x_
@@ -1490,7 +1490,7 @@ log2A t = let (m:^s) = ln2D t in approxAutoMB m 1 s
 -- the AGM'. An approximation of pi is produced as a by-product.
 lnSuperSizeUnknownPi :: Precision -> Approx -> (Approx,Approx)
 lnSuperSizeUnknownPi t x_@(Approx mb_ _ _ _) =
-    let t' = t - 10
+    let --t' = t - 10
         mb = mb_ + t
         a = setMB mb 1
         x = setMB mb x_
@@ -1522,7 +1522,7 @@ lnSuperSizeUnknownPi _ Bottom = (Bottom, Bottom)
 lnSuperSizeKnownPi :: Precision -> Approx -> Approx -> Approx
 lnSuperSizeKnownPi _t _pi Bottom = Bottom
 lnSuperSizeKnownPi t _pi x_@(Approx mb_ _ _ _) =
-    let t' = t - 10
+    let --t' = t - 10
         mb = mb_ + t
         a = setMB mb 1
         x = setMB mb x_
@@ -1579,7 +1579,7 @@ logAgmA t x
 
 
 agmA :: Precision -> Approx -> Approx -> [(Approx,Approx)]
-agmA t a b = let t' = t - 5
+agmA t a b = let --t' = t - 5
                  step (_a,_b) = (boundErrorTerm $ Approx t 1 0 (-1) * (a+b), boundErrorTerm $ sqrtA (_a*_b))
                  close (_a,_b) = approximatedBy 0 $ _a-_b
              in (\(as, bs) -> as ++ take 1 bs) . break close $ iterate step (a,b)
@@ -1597,7 +1597,7 @@ agm2 xs = sum (init xs) + unionA 0 (2 * last xs)
 -- the AGM'.
 agmLn :: Precision -> Approx -> Approx
 agmLn t x_@(Approx mb_ _ _ _) = 
-            let t' = t - 10
+            let --t' = t - 10
                 mb = mb_ + t
                 a = setMB mb 1
                 x = setMB mb x_
@@ -1829,7 +1829,7 @@ instance Floating CR where
   sqrt (CR x) = CR $ op1withResource sqrtA id <$> x <*> resources
   pi = piBinSplitCR
   exp (CR x) = CR $ op1withResource expA id <$> x <*> resources
-  log (CR x) = CR $ logA <$> resources <*> x
+  log (CR x) = CR $ op1withResource logA id <$> x <*> resources
   sin (CR x) = CR $ sinA <$> resources <*> x
   cos (CR x) = CR $ cosA <$> resources <*> x
   asin x = 2 * (atan (x / (1 + (sqrt (1 - x^2)))))
@@ -1839,5 +1839,5 @@ instance Floating CR where
   cosh x = ((exp x) + (exp $ negate x)) / 2
   tanh x = let t = exp (2*x) in (t-1)/(t+1)
   asinh x = log (x + sqrt (x^2 + 1))
-  acosh x = CR $ logA <$> resources <*> unCR (x + sqrt (x^2 - 1))
-  atanh x = (CR $ logA <$> resources <*> unCR ((1+x) / (1-x))) / 2
+  acosh x = CR $ op1withResource logA id <$> unCR (x + sqrt (x^2 - 1)) <*> resources
+  atanh x = (CR $ op1withResource logA id <$> unCR ((1+x) / (1-x)) <*> resources) / 2
