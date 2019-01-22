@@ -881,8 +881,13 @@ The resulting approximation should approximate the image of every point in the
 input approximation.
 -}
 sqrtA :: Approx -> Approx
+sqrtA Bottom = Bottom
 sqrtA x@(Approx _ 0 0 _) =  x
-sqrtA x = let mb = mBound x in limitAndBoundMB mb $ x * sqrtRecA mb x
+sqrtA x@(Approx mb _ _ s) = 
+    -- limitAndBoundMB mb $ 
+    x * sqrtRecA k x
+    where
+    k = 2*mb + s + 2
 
 {-|
 This uses Newton's method for computing the reciprocal of the square root.
