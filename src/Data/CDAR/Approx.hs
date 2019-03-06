@@ -50,6 +50,7 @@ module Data.CDAR.Approx (Approx(..)
                         ,limitSize
                         ,checkPrecisionLeft
                         ,limitAndBound
+                        ,limitAndBoundMB
                         ,unionA
                         ,intersectionA
                         ,consistentA
@@ -883,7 +884,7 @@ input approximation.
 sqrtA :: Approx -> Approx
 sqrtA Bottom = Bottom
 sqrtA x@(Approx _ 0 0 _) =  x
-sqrtA x@(Approx mb _ _ s) 
+sqrtA x@(Approx mb _ _ _) 
     | upperA x < 1 = 
         sqrtRecA k (recipA $ setMB k x)
     | otherwise =
