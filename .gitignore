@@ -15,3 +15,5 @@ Test
 stack.yaml
 cdar.log
 .stack-work/
+runtest
+runbench
