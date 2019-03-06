@@ -915,7 +915,8 @@ sqrtRecA k a@(Approx mb m e s)
                     -- that if we swap the order we would be fine. But as it
                     -- is, this computes a new first approximation.
                     (n':^t') = sqrtRecD s' ((m+e):^s) -- lower bound of result
-                in endToApprox mb (Finite ((n'+1):^t')) (Finite ((n-1):^t))
+                in endToApprox mb (Finite ((n'-1):^t')) (Finite ((n+1):^t))
+
 
 {-|
 The starting values for newton iterations can be found using the auxiliary function findStartingValues below.
