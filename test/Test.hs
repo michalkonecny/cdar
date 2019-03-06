@@ -21,7 +21,7 @@ import Data.CDAR
 main = defaultMain tests
 
 tests :: TestTree
-tests = testGroup "Tests" [dyadic, localOption (mkTimeout 200000) approx, creal, unitTests]
+tests = testGroup "Tests" [dyadic, localOption (mkTimeout 500000) approx, creal, unitTests]
   -- [dyadic
   -- ,approx
   -- ,creal
