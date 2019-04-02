@@ -118,7 +118,8 @@ module Data.CDAR.Approx (Approx(..)
 import           Control.Applicative (ZipList (..))
 import           Control.DeepSeq
 import           Control.Exception
-import           Data.Bits
+-- import           Data.Bits
+import           Data.CDAR.FakeBits
 import           Data.Char (isDigit)
 import           Data.CDAR.Classes
 import           Data.CDAR.Dyadic
@@ -304,9 +305,12 @@ showInBaseA base (Approx _ m e s)
           am = abs m
           i = shift am s
           e' = max 1 $ shift e (max 0 s)
-          f = am .&. (b-1)
+        --   f = am .&. (b-1)
+          setBits1 a = (((a `div` b) + 1) * b) - 1
+          f = setBits1 am
           i' = shift (am+e) s
-          f' = (am+e) .&. (b-1)
+        --   f' = (am+e) .&. (b-1)
+          f' = setBits1 (am + e)
           sign = if m < 0 then "-" else ""
 
 showExactA :: Int -> Integer -> Integer -> Integer -> String

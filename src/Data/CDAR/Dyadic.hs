@@ -5,7 +5,8 @@
 module Data.CDAR.Dyadic (Dyadic(..),shiftD,sqrtD,sqrtD',sqrtRecD,sqrtRecD',initSqrtRecD,initSqrtRecDoubleD,piMachinD,piBorweinD,ln2D,logD,atanhD,divD,divD') where
 
 import Data.Ratio
-import Data.Bits
+-- import Data.Bits
+import Data.CDAR.FakeBits
 import Data.CDAR.Classes
 import Data.CDAR.IntegerLog
 

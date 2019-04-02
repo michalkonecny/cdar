@@ -18,6 +18,7 @@ cabal-version:       >=1.10
 library
   exposed-modules:
       Data.CDAR
+    , Data.CDAR.FakeBits
     , Data.CDAR.Classes
     , Data.CDAR.Extended
 --    , Data.CDAR.POrd
