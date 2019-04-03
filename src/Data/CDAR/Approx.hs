@@ -306,11 +306,11 @@ showInBaseA base (Approx _ m e s)
           i = shift am s
           e' = max 1 $ shift e (max 0 s)
         --   f = am .&. (b-1)
-          setBits1 a = (((a `div` b) + 1) * b) - 1
-          f = setBits1 am
+          f = chopBits am
+          chopBits a = a - ((a `div` b) * b) -- a >= 0
           i' = shift (am+e) s
         --   f' = (am+e) .&. (b-1)
-          f' = setBits1 (am + e)
+          f' = chopBits (am + e)
           sign = if m < 0 then "-" else ""
 
 showExactA :: Int -> Integer -> Integer -> Integer -> String
