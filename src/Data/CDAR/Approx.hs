@@ -1136,7 +1136,7 @@ expTaylorA' a
     where
     aux Bottom = Bottom
     aux (Approx mb 0 0 _) = Approx mb 1 0 0
-    aux (Approx mb m e s) =
+    aux (Approx mb m 0 s) =
         let s' = s + (integerLog2 m)
             -- r' chosen so that a' below is smaller than 1/2
             r' = floor . sqrt . fromIntegral . max 5 $ mb
@@ -1144,9 +1144,10 @@ expTaylorA' a
             mb'_ = mb + r + (integerLog2 m) + 1
             mb' = (120*mb'_) `div` 100
             -- a' is a scaled by 2^k so that 2^(-r') <= a' < 2^(-r'+1)
-            a' = (Approx mb' m e (s-r))
+            a' = (Approx mb' m 0 (s-r))
             t = boundErrorTermMB $ taylorA mb' (map (recipA . setMB mb') fac) a'
         in (!! r) . iterate (boundErrorTermMB . sqrA) $ t
+    aux a2 = aux (lowerA a2) `unionA` aux (upperA a2)
    
 {- Logarithms computed by ln x = 2*atanh ((x-1)/(x+1)) after range reduction.
 -}
