@@ -1228,22 +1228,40 @@ logTaylorA res (Approx mb m e s) =
 -- Sine computed by Taylor expansion after 2 stage range reduction.
 
 -- | Computes sine by summation of Taylor series after two levels of range reductions.
-sinTaylorA :: Precision -> Approx -> Approx
-sinTaylorA res = sinTaylorRed2A res . sinTaylorRed1A res
+sinTaylorA :: Approx -> Approx
+sinTaylorA Bottom = Approx 64 0 1 0 -- [-1,1]
+sinTaylorA a@(Approx mb _ e _) 
+    | e == 0 = sinTaylorRed2A aRed
+    | otherwise = sL `unionA` sR -- aRed is in the interval [-π/2,π/2] where sine is monotone
+    where
+    (aRed, (maRedL, maRedR)) = sinTaylorRed1A a
+    sL =
+        case maRedL of
+            Nothing -> Approx mb (-1) 0 0 -- aRed probably contains -pi/2
+            Just aRedL -> sinTaylorRed2A aRedL
+    sR =
+        case maRedR of
+            Nothing -> Approx mb 1 0 0 -- aRed probably contains +pi/2
+            Just aRedR -> sinTaylorRed2A aRedR
 
 -- | First level of range reduction for sine. Brings it into the interval [-π/2,π/2].
-sinTaylorRed1A :: Precision -> Approx -> Approx
-sinTaylorRed1A _ Bottom = Bottom
-sinTaylorRed1A res a@(Approx mb _ _ _) = 
-  let _pi = piA (2*res + mb)
+sinTaylorRed1A :: Approx -> (Approx, (Maybe Approx, Maybe Approx))
+sinTaylorRed1A Bottom = (Bottom, (Nothing, Nothing))
+sinTaylorRed1A a@(Approx mb _ _ _) = 
+  let _pi = piA (mb+10)
       _halfPi = scale _pi (-1)
-      x = (subtract _halfPi) . abs . (_pi -) . abs . (subtract _halfPi) . modA a $ 2*_pi
-  in setMB mb x
+      x = setMB mb . (subtract _halfPi) . abs . (_pi -) . abs . (subtract _halfPi) . modA a $ 2*_pi
+      xL = lowerA x
+      xR = upperA x
+      _halfPiL = lowerA _halfPi
+  in (x, 
+        (if (- _halfPiL) <= xL       then Just xL else Nothing, -- guarantee -π/2 <= xL
+         if           xR <= _halfPiL then Just xR else Nothing)) -- guarantee xR <= π/2
   
 -- | Second level of range reduction for sine.
-sinTaylorRed2A :: Precision -> Approx -> Approx
-sinTaylorRed2A _ Bottom = Bottom
-sinTaylorRed2A _res a@(Approx mb m _ s) = 
+sinTaylorRed2A :: Approx -> Approx
+sinTaylorRed2A Bottom = Approx 64 0 1 0 -- [-1,1]
+sinTaylorRed2A a@(Approx mb m _ s) = 
   let k = max 0 (integerLog2 m + s + (floor . sqrt $ fromIntegral mb))
       a' = a * recipA (setMB mb $ 3^k)
       a2 = negate $ sqrA a'
@@ -1252,12 +1270,13 @@ sinTaylorRed2A _res a@(Approx mb m _ s) =
   in (!! k) . iterate step . boundErrorTerm $ t * a'
 
 -- | Computes the sine of an approximation. Chooses the best implementation.
-sinA :: Precision -> Approx -> Approx
+sinA :: Approx -> Approx
 sinA = sinTaylorA
 
 -- | Computes the cosine of an approximation. Chooses the best implementation.
-cosA :: Precision -> Approx -> Approx
-cosA res x = sinA res ((Approx 1 1 0 (-1)) * piA res - x)
+cosA :: Approx -> Approx
+cosA Bottom = Approx 64 0 1 0 -- [-1,1]
+cosA x@(Approx mb _ _ _) = sinA ((Approx 1 1 0 (-1)) * piA (mb+2) - x)
 
 -- | Computes the sine of an approximation by binary splitting summation of Taylor series.
 --
@@ -1842,8 +1861,8 @@ instance Floating CR where
   pi = piBinSplitCR
   exp (CR x) = CR $ op1withResource expA id <$> x <*> resources
   log (CR x) = CR $ op1withResource logA id <$> x <*> resources
-  sin (CR x) = CR $ sinA <$> resources <*> x
-  cos (CR x) = CR $ cosA <$> resources <*> x
+  sin (CR x) = CR $ op1withResource sinA id <$> x <*> resources
+  cos (CR x) = CR $ op1withResource cosA id <$> x <*> resources
   asin x = 2 * (atan (x / (1 + (sqrt (1 - x^2)))))
   acos x = halfPi - asin x
   atan (CR x) = CR $ atanA <$> resources <*> x
