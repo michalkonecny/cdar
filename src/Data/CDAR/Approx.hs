@@ -1233,11 +1233,12 @@ sinTaylorA res = sinTaylorRed2A res . sinTaylorRed1A res
 
 -- | First level of range reduction for sine. Brings it into the interval [-π/2,π/2].
 sinTaylorRed1A :: Precision -> Approx -> Approx
-sinTaylorRed1A res a = 
-  let _pi = piA res
+sinTaylorRed1A _ Bottom = Bottom
+sinTaylorRed1A res a@(Approx mb _ _ _) = 
+  let _pi = piA (2*res + mb)
       _halfPi = scale _pi (-1)
       x = (subtract _halfPi) . abs . (_pi -) . abs . (subtract _halfPi) . modA a $ 2*_pi
-  in x
+  in setMB mb x
   
 -- | Second level of range reduction for sine.
 sinTaylorRed2A :: Precision -> Approx -> Approx
