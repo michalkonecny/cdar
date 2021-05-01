@@ -1270,7 +1270,7 @@ sinTaylorRed2A :: Approx -> Approx
 sinTaylorRed2A Bottom = Approx 64 0 1 0 -- [-1,1]
 sinTaylorRed2A a@(Approx mb m _ s) = 
   let k = max 0 (integerLog2 m + s + (floor . sqrt $ fromIntegral mb))
-      a' = a * recipA (setMB mb $ 3^k)
+      a' = a * recipA ((setMB mb 3)^k)
       a2 = negate $ sqrA a'
       t = taylorA mb (map (recipA . setMB mb) oddFac) a2
       step x = boundErrorTerm $ x * (3 - 4 * sqrA x)
