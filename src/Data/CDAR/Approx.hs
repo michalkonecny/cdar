@@ -38,6 +38,7 @@ module Data.CDAR.Approx (Approx(..)
                         ,fromDyadic
                         ,fromDyadicMB
                         ,toApprox
+                        ,toApproxMB
                         ,recipA
                         ,divAInteger
                         ,modA
@@ -565,6 +566,12 @@ toApprox t r = approxAutoMB m e (-t - 1)
     r_scaled = r*2^^t
     e | r_scaled == fromIntegral r_scaled_rounded = 0
       | otherwise = 1
+
+-- |Convert a rational number into an approximation of that number with
+-- 'mBound' significant bits correct.
+toApproxMB :: Int -> Rational -> Approx
+toApproxMB mb r = 
+    (Approx mb (numerator r) 0 0) / (Approx mb (denominator r) 0 0)
 
 -- |Not a proper Fractional type as Approx are intervals.
 instance Fractional Approx where
