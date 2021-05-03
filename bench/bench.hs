@@ -50,15 +50,15 @@ newSuite =
     [ bench "double" $ nf exp (1 :: Double)
     , bench "B40" $ nf (expBinarySplittingA 40) 1
     , bench "T40" $ nf (expTaylorA 40) 1
-    , bench "T'40" $ nf (expTaylorA' 40) 1
+    , bench "T'40" $ nf expTaylorA' (setMB 40 1)
     , bench "CR40" $ nf (require 40 . expCR) 1
     , bench "B400" $ nf (expBinarySplittingA 400) 1
     , bench "T400" $ nf (expTaylorA 400) 1
-    , bench "T'400" $ nf (expTaylorA' 400) 1
+    , bench "T'400" $ nf expTaylorA' (setMB 400 1)
     , bench "CR400" $ nf (require 400 . expCR) 1
     , bench "B4000" $ nf (expBinarySplittingA 4000) 1
     , bench "T4000" $ nf (expTaylorA 4000) 1
-    , bench "T'4000" $ nf (expTaylorA' 4000) 1
+    , bench "T'4000" $ nf (expTaylorA') (setMB 4000 1)
     , bench "CR4000" $ nf (require 4000 . expCR) 1
     ]
   , bgroup "logappr"
@@ -86,13 +86,13 @@ newSuite =
   , bgroup "sin"
     [ bench "double" $ nf sin (1 :: Double)
     , bench "40" $ nf (require 40 . sin) 1
-    , bench "40T" $ nf (sinTaylorA 40) 1
+    , bench "40T" $ nf sinTaylorA (setMB 40 1)
     , bench "40CR" $ nf (require 40 . sinCR) 1
     , bench "400" $ nf (require 400 . sin) 1
-    , bench "400T" $ nf (sinTaylorA 400) 1
+    , bench "400T" $ nf sinTaylorA (setMB 400 1)
     , bench "400CR" $ nf (require 400 . sinCR) 1
 --    , bench "4000" $ nf (require 4000 . sin) 1
-    , bench "4000T" $ nf (sinTaylorA 4000) 1
+    , bench "4000T" $ nf sinTaylorA (setMB 4000 1)
     , bench "4000CR" $ nf (require 4000 . sinCR) 1
     ]
   , bgroup "cos"
@@ -157,15 +157,15 @@ newSuite =
     , bench "sqrt double" $ nf (sqrt) (pi :: Double)
     , bench "+ 50" $ nf (\x -> x+x) pi1
     , bench "* 50" $ nf (\x -> x*x) pi1
-    , bench "rec 50" $ nf (recipA 50) pi1
-    , bench "sqrt 50" $ nf (sqrtA 50) pi1
-    , bench "log 50" $ nf (logA 50) pi1
+    , bench "rec 50" $ nf recipA (setMB 50 pi1)
+    , bench "sqrt 50" $ nf sqrtA (setMB 50 pi1)
+    , bench "log 50" $ nf (logA) (setMB 50 pi1)
     , bench "+ 1000" $ nf (\x -> x+x) pi2
     , bench "* 1000" $ nf (\x -> x*x) pi2
-    , bench "rec 1000" $ nf (recipA 1000) pi2
-    , bench "sqrt 1000" $ nf (sqrtA 1000) pi2
+    , bench "rec 1000" $ nf recipA (setMB 1000 pi2)
+    , bench "sqrt 1000" $ nf sqrtA (setMB 1000 pi2)
     , bench "sqrtRec 1000" $ nf (sqrtRecA 1000) pi2
-    , bench "log 1000" $ nf (logA 1000) pi2
+    , bench "log 1000" $ nf logA (setMB 1000 pi2)
     ]
   ]
 
