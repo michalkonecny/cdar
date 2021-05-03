@@ -1,6 +1,8 @@
-# CDAR
+# CDAR (cdar-mBound)
 
 Implementation of computable real numbers, which is also often referred to as Exact Real Arithmetic.
+
+Please see [section at the bottom](#variation-mbound-vs-master) how this branch (mBound) differs from the master branch.
 
 ## Computable Real Numbers
 
@@ -24,7 +26,9 @@ Each computable real can be viewed as an infinite list of rapidly shrinking inte
 
 * [**MPFR**](https://hackage.haskell.org/package/hmpfr-0.4.3/docs/Data-Number-MPFR.html) Arbitrary precision floating point numbers with specified rounding modes. While arbitrary precision can be used it is still fixed for a computation so this is still floating point arithmetic, but with larger precision.
 
-* [**AERN2**](https://hackage.haskell.org/package/aern2-real) Computable real numbers using Cauchy sequences with a fixed modulus.
+* [**AERN2**](https://hackage.haskell.org/package/aern2-real) Computable real numbers and continuous functions using Cauchy sequences. 
+
+  * AERN2 uses on the CDAR type `Approx` as safely-rounded multi-precision floating-point numbers and builds interval arithmetic on top of them.
 
 * [**ireal**](http://hackage.haskell.org/package/ireal) Computable real numbers using Cauchy sequences with a fixed modulus.
 
@@ -53,5 +57,10 @@ Main usage cases:
 
 A word of warning though: Some operations are, by necessity, partial. In particular, comparisons are partial, and so is 1/x near 0.
 
-## Examples
+<!-- ## Examples -->
 
+## Variation mBound vs master
+
+In the mBounds branch, each `Approx` has an additional integer component, called `mBound`, a bound for the number of bits in the integer component `m`.  Thus there is a limit on the bit size of the results of arithmetic operations.
+In the original variation, the size of `m` could grow arbitrarily for large numbers.  
+`mBound` plays a similar role for `Approx` numbers as mantissa size does for floating-point numbers.
