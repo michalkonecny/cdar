@@ -1605,7 +1605,8 @@ lnSmall t x_@(Approx mb_ m _ s) =
     in logx2k - log2k
 
 -- | Compute logarithms using AGM as described in Borwein and Borwein's book 'Pi and
--- the AGM'.
+-- the AGM'. 
+-- TODO: adapt to mBound
 logAgmA :: Precision -> Approx -> Approx
 logAgmA t x
     | significance x < pure 5     = Bottom

@@ -65,13 +65,13 @@ newSuite =
     [ bench "doubleLog" $ nf log (1.5 :: Double)
     , bench "40B" $ nf (logBinarySplittingA 40) (Approx 10 3 0 (-1))
     , bench "40T" $ nf (logTaylorA 40) (Approx 10 3 0 (-1))
-    , bench "40agm" $ nf (logAgmA (-40)) (Approx 10 3 0 (-1))
+    -- , bench "40agm" $ nf (logAgmA (-40)) (Approx 10 3 0 (-1))
     , bench "400B" $ nf (logBinarySplittingA 400) (Approx 10 3 0 (-1))
     , bench "400T" $ nf (logTaylorA 400) (Approx 10 3 0 (-1))
-    , bench "400agm" $ nf (logAgmA (-400)) (Approx 10 3 0 (-1))
+    -- , bench "400agm" $ nf (logAgmA (-400)) (Approx 10 3 0 (-1))
     , bench "4000B" $ nf (logBinarySplittingA 4000) (Approx 10 3 0 (-1))
     , bench "4000T" $ nf (logTaylorA 4000) (Approx 10 3 0 (-1))
-    , bench "4000agm" $ nf (logAgmA (-4000)) (Approx 10 3 0 (-1))
+    -- , bench "4000agm" $ nf (logAgmA (-4000)) (Approx 10 3 0 (-1))
     ]
   , bgroup "exp"
     [ bench "double" $ nf exp (1 :: Double)
