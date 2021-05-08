@@ -2,7 +2,7 @@
 -- see http://haskell.org/cabal/users-guide/
 
 name:                cdar-mBound
-version:             0.1.0.0
+version:             0.1.0.1
 synopsis:            Exact real arithmetic using Centred Dyadic Approximations
 description:         Please see https://github.com/michalkonecny/cdar/tree/mBound#readme
 license:             BSD3

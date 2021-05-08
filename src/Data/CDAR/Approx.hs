@@ -404,7 +404,7 @@ enforceMB a@(Approx mb m e s)
     | abs m <= 1 = a
     | otherwise = Approx mb m' e'' (s + d)
     where
-    m_size = 1+integerLog2 (abs m - 1) -- |m| <= 2^m_size
+    m_size = 1+integerLog2 (abs m - 1) --- |m| <= 2^m_size
     d = m_size - mb
     m' = unsafeShiftR m d -- we have: m' * 2^d <= m
     e' = 1 + (unsafeShiftR (e-1) d) -- we have: 0 <= e <= e' * 2^d
