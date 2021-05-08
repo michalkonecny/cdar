@@ -4,7 +4,7 @@
 name:                cdar-mBound
 version:             0.1.0.0
 synopsis:            Exact real arithmetic using Centred Dyadic Approximations
--- description:         
+description:         Please see https://github.com/michalkonecny/cdar/tree/mBound#readme
 license:             BSD3
 license-file:        LICENSE
 author:              Jens Blanck, Michal Konecny
@@ -33,7 +33,8 @@ library
   -- other-modules:       
   other-extensions:    BangPatterns, GADTs, TypeSynonymInstances, FlexibleInstances, DeriveFunctor, MagicHash
   build-depends:
-    base,containers,deepseq,integer-gmp
+    base >= 4.7 && < 4.15,
+    containers,deepseq,integer-gmp
     --   base >=4.7 && <4.10
     -- , containers >=0.5 && <0.6
     -- , deepseq >=1.3 && <1.5
@@ -55,7 +56,7 @@ test-suite test
   type:      exitcode-stdio-1.0
   main-is:    Test.hs
   build-depends:
-    base, containers, deepseq, integer-gmp, QuickCheck, smallcheck, tasty-hunit, tasty-quickcheck, tasty-smallcheck, tasty, cdar-mBound >= 0.1
+    base, containers, deepseq, integer-gmp, QuickCheck, smallcheck, tasty-hunit, tasty-quickcheck, tasty-smallcheck, tasty, cdar-mBound
     --   base >=4.7 && <4.10
     -- , containers >=0.5 && <0.6
     -- , deepseq >=1.3 && <1.5
