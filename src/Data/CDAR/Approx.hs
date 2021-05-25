@@ -898,7 +898,7 @@ sqrtA x@(Approx mb _ _ _)
         -- limitAndBoundMB mb $ 
         x * sqrtRecA k x
     where
-    k = 2*mb + 2
+    k = mb + 2
 
 {-|
 This uses Newton's method for computing the reciprocal of the square root.
