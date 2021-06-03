@@ -2,7 +2,7 @@
 -- see http://haskell.org/cabal/users-guide/
 
 name:                cdar-mBound
-version:             0.1.0.2
+version:             0.1.0.3
 synopsis:            Exact real arithmetic using Centred Dyadic Approximations
 description:         Please see https://github.com/michalkonecny/cdar/tree/mBound#readme
 license:             BSD3
@@ -33,7 +33,7 @@ library
   -- other-modules:       
   other-extensions:    BangPatterns, GADTs, TypeSynonymInstances, FlexibleInstances, DeriveFunctor, MagicHash
   build-depends:
-    base >= 4.7 && < 4.15,
+    base >= 4.7 && < 5,
     containers,deepseq,integer-gmp
     --   base >=4.7 && <4.10
     -- , containers >=0.5 && <0.6
