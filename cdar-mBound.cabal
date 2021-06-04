@@ -2,7 +2,7 @@
 -- see http://haskell.org/cabal/users-guide/
 
 name:                cdar-mBound
-version:             0.1.0.3
+version:             0.1.0.4
 synopsis:            Exact real arithmetic using Centred Dyadic Approximations
 description:         Please see https://github.com/michalkonecny/cdar/tree/mBound#readme
 license:             BSD3
@@ -56,7 +56,7 @@ test-suite test
   type:      exitcode-stdio-1.0
   main-is:    Test.hs
   build-depends:
-    base, containers, deepseq, integer-gmp, QuickCheck, smallcheck, tasty-hunit, tasty-quickcheck, tasty-smallcheck, tasty, cdar-mBound
+    base, smallcheck, tasty-hunit, tasty-quickcheck, tasty-smallcheck, tasty, cdar-mBound
     --   base >=4.7 && <4.10
     -- , containers >=0.5 && <0.6
     -- , deepseq >=1.3 && <1.5
@@ -90,14 +90,7 @@ Benchmark bench
   type:                 exitcode-stdio-1.0
   main-is:              bench.hs
   build-depends:
-    base, containers, deepseq, integer-gmp, cdar-mBound, criterion, parallel
-    --   base >=4.7 && <4.10
-    -- , containers >=0.5 && <0.6
-    -- , deepseq >=1.3 && <1.5
-    -- , integer-gmp >=0.5 && <1.1
-    -- , cdar >= 0.1
-    -- , criterion >= 1.1 && <1.2
-    -- , parallel >=3.2 && <3.3
+    base, cdar-mBound, criterion
   hs-source-dirs:       bench
   default-language: Haskell2010
   ghc-options:         -O2 -rtsopts
@@ -138,15 +131,7 @@ Executable examples
   main-is:             Main.hs
   other-modules:       ExamplesRump
   build-depends:
-    base, containers, deepseq, integer-gmp, cdar-mBound
-    --   base >= 4 && < 5
-    -- , cdar >= 0.1
-    -- , containers >= 0.5 && < 0.6
-    -- , deepseq >=1.3 && <1.5
-    -- , integer-gmp >=0.5 && <1.1
-    -- , cdar >= 0.1
-    -- , criterion >= 1.1 && <1.2
-    -- , parallel >=3.2 && <3.3
+    base, cdar-mBound
   default-language: Haskell2010
 
 Executable logistic
